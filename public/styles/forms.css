@@ -1,0 +1,67 @@
+.name-form {
+  align-items: end;
+  border-bottom: 1px solid var(--surface-border);
+  grid-template-columns: 1fr auto;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+}
+
+.name-form label {
+  min-width: 0;
+}
+
+.name-form input,
+.name-form button {
+  min-height: var(--control-min-block-sm);
+  padding: 0.35rem 0.6rem;
+}
+label,
+fieldset {
+  display: grid;
+  gap: 0.4rem;
+}
+
+fieldset {
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  padding: 0.8rem;
+}
+
+legend {
+  color: var(--meta-text);
+  padding: 0 0.3rem;
+}
+
+select,
+input {
+  min-height: var(--control-min-block);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+
+select,
+input {
+  width: 100%;
+  background: var(--control-bg);
+  color: var(--control-text);
+  padding: 0.75rem;
+}
+
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--control-focus-ring);
+  outline-offset: 2px;
+}
+
+.check {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  min-height: var(--control-min-block);
+}
+
+.check input {
+  inline-size: 1.3rem;
+  block-size: 1.3rem;
+}

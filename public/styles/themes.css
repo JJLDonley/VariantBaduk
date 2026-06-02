@@ -1,0 +1,110 @@
+:root,
+:root[data-theme="light"] {
+  --color-bg: #f7f7f7;
+  --color-surface: #ffffff;
+  --color-text: #111111;
+  --color-muted: #666666;
+  --color-accent: #222222;
+  --color-accent-text: #ffffff;
+  --color-border: #d0d0d0;
+  --color-danger: #c98282;
+  --color-focus-ring: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  --color-backdrop: rgb(128 128 128 / 45%);
+  --color-shadow-accent: color-mix(in srgb, var(--color-accent) 30%, transparent);
+
+  --board-bg: #c89448;
+  --board-border: #6a431f;
+  --board-line: #4f2d12;
+  --board-point-outline: var(--color-danger);
+  --no-score-stripe: rgb(150 35 35 / 75%);
+  --preview-outline: rgb(80 80 80 / 45%);
+  --custom-goban-point-bg: rgb(0 0 0 / 12%);
+  --custom-goban-point-border: rgb(0 0 0 / 25%);
+
+  --stone-black: #080808;
+  --stone-white: #eeeeee;
+  --stone-white-border: #999999;
+  --stone-black-border: #555555;
+  --stone-neutral: #777777;
+  --stone-blue: #6c8cff;
+  --stone-red: #e07a5f;
+  --stone-green: #81b29a;
+  --stone-yellow: #f2cc8f;
+  --stone-pink: #b5838d;
+  --stone-cyan: #8ecae6;
+  --stone-purple: #cdb4db;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #111111;
+    --color-surface: #181818;
+    --color-text: #eeeeee;
+    --color-muted: #999999;
+    --color-accent: #eeeeee;
+    --color-accent-text: #111111;
+    --color-border: #333333;
+    --color-danger: #c98282;
+    --color-focus-ring: color-mix(in srgb, var(--color-accent) 45%, transparent);
+    --color-backdrop: rgb(128 128 128 / 45%);
+    --color-shadow-accent: color-mix(in srgb, var(--color-accent) 30%, transparent);
+
+    --board-bg: #c89448;
+    --board-border: #6a431f;
+    --board-line: #4f2d12;
+    --board-point-outline: var(--color-danger);
+    --no-score-stripe: rgb(205 70 70 / 72%);
+    --preview-outline: rgb(220 220 220 / 38%);
+    --custom-goban-point-bg: rgb(0 0 0 / 18%);
+    --custom-goban-point-border: rgb(0 0 0 / 34%);
+
+    --stone-black: #050505;
+    --stone-white: #eeeeee;
+    --stone-white-border: #999999;
+    --stone-black-border: #555555;
+    --stone-neutral: #777777;
+    --stone-blue: #6c8cff;
+    --stone-red: #e07a5f;
+    --stone-green: #81b29a;
+    --stone-yellow: #f2cc8f;
+    --stone-pink: #b5838d;
+    --stone-cyan: #8ecae6;
+    --stone-purple: #cdb4db;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #111111;
+  --color-surface: #181818;
+  --color-text: #eeeeee;
+  --color-muted: #999999;
+  --color-accent: #eeeeee;
+  --color-accent-text: #111111;
+  --color-border: #333333;
+  --color-danger: #c98282;
+  --color-focus-ring: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  --color-backdrop: rgb(128 128 128 / 45%);
+  --color-shadow-accent: color-mix(in srgb, var(--color-accent) 30%, transparent);
+
+  --board-bg: #c89448;
+  --board-border: #6a431f;
+  --board-line: #4f2d12;
+  --board-point-outline: var(--color-danger);
+  --no-score-stripe: rgb(205 70 70 / 72%);
+  --preview-outline: rgb(220 220 220 / 38%);
+  --custom-goban-point-bg: rgb(0 0 0 / 18%);
+  --custom-goban-point-border: rgb(0 0 0 / 34%);
+
+  --stone-black: #050505;
+  --stone-white: #eeeeee;
+  --stone-white-border: #999999;
+  --stone-black-border: #555555;
+  --stone-neutral: #777777;
+  --stone-blue: #6c8cff;
+  --stone-red: #e07a5f;
+  --stone-green: #81b29a;
+  --stone-yellow: #f2cc8f;
+  --stone-pink: #b5838d;
+  --stone-cyan: #8ecae6;
+  --stone-purple: #cdb4db;
+}

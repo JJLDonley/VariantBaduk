@@ -1,0 +1,168 @@
+.players-panel {
+  grid-template-areas:
+    "review"
+    "actions"
+    "seats";
+}
+
+.players-panel__toggle {
+  grid-area: toggle;
+}
+
+.players-panel__review {
+  grid-area: review;
+}
+
+.players-panel__actions {
+  grid-area: actions;
+}
+
+.players-panel__seats {
+  grid-area: seats;
+}
+
+.players-panel__metadata {
+  grid-area: meta;
+}
+
+.players-toggle {
+  text-align: left;
+}
+
+.players-toggle::after {
+  content: " ▾";
+}
+
+.players-toggle[aria-expanded="true"]::after {
+  content: " ▴";
+}
+
+.players-panel h3,
+.users-panel h3,
+.user-list h4,
+.variant-settings h3 {
+  margin-bottom: 0;
+}
+
+.user-list h4 {
+  color: var(--meta-text);
+  font-size: 0.85rem;
+}
+
+.actions,
+.history-actions {
+  margin-block: 0;
+}
+
+.actions {
+  grid-template-columns: repeat(3, 1fr);
+  overflow: visible;
+}
+
+.actions button,
+.history-actions button {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  line-height: 1;
+}
+
+.actions button {
+  font-size: 0.82rem;
+}
+
+.history-actions {
+  align-items: center;
+  grid-template-columns: repeat(2, 2.7rem) auto repeat(2, 2.7rem);
+  justify-content: center;
+  text-align: center;
+}
+
+.history-actions button {
+  block-size: 2rem;
+  box-sizing: border-box;
+  font-size: 0.78rem;
+  inline-size: 2.7rem;
+  line-height: 1;
+  min-height: 0;
+  padding: 0;
+}
+
+.history-actions .history-edge {
+  font-size: 0.78rem;
+}
+
+.history-actions span {
+  align-items: center;
+  align-self: stretch;
+  display: inline-flex;
+}
+
+.seat-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: end;
+}
+
+.actions[hidden],
+.history-actions[hidden] {
+  display: none;
+}
+
+.game-meta {
+  color: var(--meta-text);
+  grid-template-columns: 1fr;
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.game-meta span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.game-meta strong {
+  color: var(--surface-text);
+  font-size: 0.85rem;
+}
+
+.variant-meta-list {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.variant-meta-button {
+  flex: 0 0 auto;
+  min-height: 0;
+  padding-block: 0.2rem;
+  width: fit-content;
+}
+
+.variant-rules-help {
+  overflow-wrap: anywhere;
+}
+
+.variant-rules-help h4 {
+  margin-block: 1rem 0.35rem;
+}
+
+.variant-rules-help h4:first-of-type {
+  margin-top: 0.5rem;
+}
+
+.variant-rules-help details {
+  border-top: 1px solid var(--surface-border);
+  padding-block: 0.4rem;
+}
+
+.variant-rules-help summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.variant-rules-help p {
+  margin: 0.35rem 0 0;
+}

@@ -1,0 +1,48 @@
+.name-form,
+.game-list,
+.games-disclosure {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.games-disclosure {
+  align-content: start;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.games-disclosure summary {
+  cursor: pointer;
+  font-size: 1.5em;
+  font-weight: 700;
+  list-style: none;
+}
+
+.games-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.games-disclosure summary::after {
+  content: " ▾";
+}
+
+.games-disclosure[open] summary::after {
+  content: " ▴";
+}
+
+.game-list-item {
+  border-bottom: 1px solid var(--surface-border);
+  color: var(--link-text);
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0.35rem 0;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-list-item span,
+.muted-text {
+  color: var(--link-text-muted);
+}

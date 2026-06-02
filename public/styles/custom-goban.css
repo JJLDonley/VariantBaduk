@@ -1,0 +1,66 @@
+.custom-goban-dialog {
+  background: var(--dialog-bg);
+  border: 0;
+  color: var(--dialog-text);
+  inline-size: min(calc(100vw - 8px), 40rem);
+  max-block-size: calc(100dvh - 8px);
+  max-inline-size: calc(100vw - 8px);
+  overflow: hidden;
+  padding: 2.25rem 4px 4px;
+}
+
+.custom-goban-dialog::backdrop {
+  background: var(--color-backdrop);
+}
+
+.custom-goban-close {
+  background: transparent;
+  font-size: 1.2rem;
+  line-height: 1;
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  position: absolute;
+  right: 4px;
+  top: 4px;
+}
+
+.custom-goban-controls {
+  align-items: center;
+  grid-template-columns: repeat(4, max-content);
+  gap: 0.25rem;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.custom-goban-controls button {
+  min-height: 2rem;
+  padding: 0.25rem 0.45rem;
+}
+
+.custom-goban-board-wrap {
+  display: grid;
+  justify-items: center;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.custom-goban-board {
+  aspect-ratio: 1 / 1;
+  background: var(--board-bg);
+  gap: 1px;
+  inline-size: min(calc(100vw - 16px), 38rem, calc(100dvh - 7rem));
+  padding: 2px;
+  margin-inline: auto;
+}
+
+.custom-point {
+  background: var(--custom-goban-point-bg);
+  border: 1px solid var(--custom-goban-point-border);
+  min-height: 0;
+  padding: 0;
+}
+
+.custom-point.is-removed {
+  background: transparent;
+  border-color: transparent;
+}

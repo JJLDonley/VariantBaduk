@@ -1,0 +1,633 @@
+@media (max-width: 499px) {
+  h1 {
+    font-size: 0;
+  }
+
+  h1 .home-link {
+    font-size: 0;
+  }
+
+  h1 .home-link::after {
+    content: "VGS";
+    font-size: 1.35rem;
+  }
+}
+
+@media (max-width: 759px) {
+  .custom-goban-dialog {
+    inline-size: calc(100vw - 2 * var(--gutter-compact));
+  }
+
+  .custom-goban-board {
+    inline-size: min(calc(100vw - 16px), calc(100dvh - 7rem));
+  }
+
+  html,
+  body {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+    width: 100%;
+  }
+
+  .shell {
+    align-content: start;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: var(--gutter-compact);
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    padding: var(--gutter-compact) var(--gutter-compact) 0;
+  }
+
+  .game-list-card {
+    border: 0;
+    border-radius: 0;
+    padding: 1rem;
+  }
+
+  .shell.game-layout {
+    padding-inline: 0;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+
+  .panel-card {
+    border-inline: 0;
+    border-radius: 0;
+    min-height: 0;
+    overflow-anchor: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .shell.game-layout .panel-card {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .shell.game-layout .game-title-row,
+  .shell.game-layout .players-panel,
+  .shell.game-layout .users-panel {
+    padding-inline: var(--gutter-compact);
+  }
+
+  .shell.game-layout .game-title-row {
+    padding-bottom: var(--gutter-compact);
+  }
+
+  .shell.game-layout .game-view {
+    align-content: start;
+    display: block;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .shell.game-layout .board-panel {
+    background: var(--surface-bg);
+    display: grid;
+    justify-items: center;
+  }
+
+  .shell.game-layout .players-panel {
+    margin-top: 1rem;
+  }
+
+  .shell.game-layout .players-panel .history-actions,
+  .shell.game-layout .players-panel .actions {
+    margin-block: 0;
+  }
+
+  .shell.game-layout .players-panel,
+  .shell.game-layout .users-panel {
+    overflow: visible;
+  }
+
+  .shell.game-layout .users-panel {
+    padding-bottom: 1rem;
+  }
+
+  .shell.game-layout .board {
+    block-size: auto;
+    inline-size: min(
+      calc(100vw - 2 * var(--gutter-compact)),
+      calc(100dvh - var(--stacked-game-board-offset))
+    );
+  }
+
+  .shell:not(.game-layout) .panel-card {
+    align-self: stretch;
+    height: 100%;
+    max-height: none;
+  }
+
+  .shell:not(.game-layout) .game-list-card {
+    align-self: start;
+    max-height: 35dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .shell:not(.game-layout) .games-disclosure[open] {
+    min-height: 0;
+  }
+
+  .shell:not(.game-layout) .games-disclosure[open] .game-list {
+    max-height: 24dvh;
+    overflow-y: auto;
+  }
+
+  .shell:not(.game-layout) .create-game-form {
+    align-content: start;
+    overflow-anchor: none;
+    padding-bottom: 1rem;
+  }
+
+  .shell:not(.game-layout) .variant-options {
+    overflow-anchor: none;
+  }
+
+  .shell.game-layout .game-list-card {
+    display: none;
+  }
+
+  .shell.game-layout .players-toggle,
+  .shell.game-layout .players-panel > .players-panel__metadata {
+    display: none;
+  }
+
+  .shell.game-layout .players-panel .seats[hidden] {
+    display: grid;
+  }
+
+  .game-title-row {
+    gap: 0.5rem;
+  }
+
+  .game-info-toggle {
+    display: none;
+  }
+
+  .game-info-dialog,
+  .landing-help-dialog {
+    inline-size: calc(100vw - 1rem);
+    max-width: calc(100vw - 1rem);
+  }
+}
+
+@media (min-width: 760px) {
+  .shell.game-layout .players-panel {
+    grid-template-areas:
+      "seats"
+      "actions"
+      "review"
+      "meta";
+  }
+
+  .players-toggle {
+    display: none;
+  }
+
+  .players-panel .seats[hidden] {
+    display: grid;
+  }
+
+  .shell {
+    align-items: start;
+    column-gap: 1.5rem;
+    grid-template-columns:
+      clamp(
+        var(--game-list-inline-size-min),
+        var(--game-list-inline-size-preferred),
+        var(--game-list-inline-size)
+      ) minmax(0, 1fr);
+    justify-content: stretch;
+    height: 100svh;
+    padding-top: var(--gutter-compact);
+    position: relative;
+  }
+
+  .header {
+    grid-column: 1 / -1;
+    padding-top: 0;
+  }
+
+  .game-list-card {
+    border: 0;
+    border-radius: var(--radius-md);
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+    height: calc(100svh - var(--space-4) - var(--gutter-compact));
+    min-height: 0;
+    min-width: 0;
+    overflow: visible;
+    padding-right: clamp(var(--space-2), 2vw, var(--space-5));
+    position: sticky;
+    top: 0;
+  }
+
+  .game-list-card::after {
+    content: "";
+    inline-size: 1px;
+    inset-block: -1rem;
+    pointer-events: none;
+    position: absolute;
+    right: -0.75rem;
+  }
+
+  .games-disclosure {
+    display: block;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .games-disclosure[open] .game-list {
+    display: block;
+  }
+
+  .games-disclosure summary {
+    cursor: default;
+    pointer-events: none;
+  }
+
+  .games-disclosure summary::after,
+  .games-disclosure[open] summary::after,
+  .players-toggle::after,
+  .players-toggle[aria-expanded="true"]::after {
+    content: "";
+  }
+
+  .games-disclosure:not([open]) .game-list {
+    display: block;
+  }
+
+  .game-list {
+    display: block;
+    min-height: 0;
+    min-width: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .panel-card {
+    background: var(--surface-bg);
+    border: 0;
+    grid-column: 2;
+    grid-row: 2;
+    height: calc(100svh - var(--space-4) - var(--gutter-compact));
+    overflow: hidden;
+  }
+
+  .create-game-form {
+    grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+    max-width: var(--create-form-max-inline-size);
+  }
+
+  .core-settings {
+    grid-column: 1;
+  }
+
+  .form-divider {
+    align-self: stretch;
+    display: block;
+    grid-column: 2;
+    min-height: 100%;
+  }
+
+  .variant-settings {
+    grid-column: 3;
+  }
+
+  .variant-settings {
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+  }
+}
+
+@media (min-width: 760px) and (max-width: 1649px) {
+  .shell.game-layout {
+    grid-template-columns: 1fr;
+    gap: var(--gutter-compact);
+    padding: var(--gutter-compact) 0 0;
+  }
+
+  .shell.game-layout .game-list-card {
+    display: none;
+  }
+
+  .shell.game-layout .panel-card {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: calc(100dvh - 3rem);
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .shell.game-layout .game-title-row,
+  .shell.game-layout .players-panel,
+  .shell.game-layout .users-panel {
+    padding-inline: var(--gutter-compact);
+  }
+
+  .shell.game-layout .game-view {
+    align-content: start;
+    display: block;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .shell.game-layout .board-panel {
+    background: var(--surface-bg);
+    display: grid;
+    justify-items: center;
+  }
+
+  .shell.game-layout .board {
+    block-size: auto;
+    inline-size: min(
+      calc(100vw - 2 * var(--gutter-compact)),
+      calc(100dvh - var(--stacked-game-board-offset))
+    );
+  }
+
+  .shell.game-layout .players-panel,
+  .shell.game-layout .users-panel {
+    overflow: visible;
+  }
+
+  .shell.game-layout .players-panel {
+    grid-template-areas:
+      "review"
+      "actions"
+      "seats";
+    margin-top: 1rem;
+  }
+
+  .shell.game-layout .users-panel {
+    padding-bottom: 1rem;
+  }
+
+  .shell.game-layout .players-toggle,
+  .shell.game-layout .players-panel > .players-panel__metadata {
+    display: none;
+  }
+
+  .shell.game-layout .players-panel .seats[hidden] {
+    display: grid;
+  }
+
+  .shell.game-layout .game-info-toggle {
+    display: none;
+  }
+
+  .shell.game-layout.desktop-fit {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--gutter-compact);
+    padding: var(--gutter-compact);
+  }
+
+  .shell.game-layout.desktop-fit .game-list-card {
+    display: none;
+  }
+
+  .shell.game-layout.desktop-fit .panel-card {
+    background: var(--surface-bg);
+    border: 0;
+    display: grid;
+    gap: var(--space-4);
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: calc(100dvh - 3rem);
+    overflow: hidden;
+    padding: var(--gutter-compact);
+  }
+
+  .shell.game-layout.desktop-fit .game-view {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1fr) var(--sidebar-inline-size) 1px var(--metadata-inline-size);
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .shell.game-layout.desktop-fit .board-panel {
+    background: transparent;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    justify-items: center;
+    position: static;
+  }
+
+  .shell.game-layout.desktop-fit .board {
+    block-size: min(100%, calc(100svh - var(--desktop-game-board-offset)));
+    inline-size: min(100%, calc(100svh - var(--desktop-game-board-offset)));
+    justify-self: center;
+  }
+
+  .shell.game-layout.desktop-fit .players-panel,
+  .shell.game-layout.desktop-fit .users-panel {
+    overflow-y: auto;
+    padding-inline: 0;
+  }
+
+  .shell.game-layout.desktop-fit .players-panel {
+    grid-template-areas:
+      "seats"
+      "actions"
+      "review"
+      "meta";
+  }
+
+  .shell.game-layout.desktop-fit .panel-divider {
+    display: block;
+    min-height: 0;
+  }
+
+  .shell.game-layout.desktop-fit .game-info-toggle {
+    display: none;
+  }
+
+  .shell.game-layout.desktop-fit .players-panel > .players-panel__metadata {
+    display: grid;
+  }
+}
+
+@media (min-width: 1650px) {
+  .shell {
+    grid-template-columns: var(--game-list-inline-size-wide) minmax(0, 1fr);
+  }
+
+  .shell.game-layout {
+    grid-template-columns: 1fr;
+    gap: var(--gutter-compact);
+    padding: var(--gutter-compact) 0 0;
+  }
+
+  .shell.game-layout .game-list-card {
+    display: none;
+  }
+
+  .shell.game-layout .panel-card {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: calc(100dvh - 3rem);
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .shell.game-layout .game-title-row,
+  .shell.game-layout .players-panel,
+  .shell.game-layout .users-panel {
+    padding-inline: var(--gutter-compact);
+  }
+
+  .shell.game-layout .game-view {
+    align-content: start;
+    display: block;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .shell.game-layout .board-panel {
+    background: var(--surface-bg);
+    display: grid;
+    justify-items: center;
+  }
+
+  .shell.game-layout .board {
+    block-size: auto;
+    inline-size: min(
+      calc(100vw - 2 * var(--gutter-compact)),
+      calc(100dvh - var(--stacked-game-board-offset))
+    );
+  }
+
+  .shell.game-layout .players-panel,
+  .shell.game-layout .users-panel {
+    overflow: visible;
+  }
+
+  .shell.game-layout .players-panel {
+    grid-template-areas:
+      "review"
+      "actions"
+      "seats";
+    margin-top: 1rem;
+  }
+
+  .shell.game-layout .users-panel {
+    padding-bottom: 1rem;
+  }
+
+  .shell.game-layout .players-toggle,
+  .shell.game-layout .players-panel > .players-panel__metadata {
+    display: none;
+  }
+
+  .shell.game-layout .players-panel .seats[hidden] {
+    display: grid;
+  }
+
+  .shell.game-layout .game-info-toggle {
+    display: none;
+  }
+
+  .shell.game-layout.desktop-fit {
+    grid-template-columns:
+      var(--game-list-inline-size) minmax(0, 1fr) var(--sidebar-inline-size) var(
+        --metadata-inline-size
+      );
+    gap: 1rem;
+    padding: max(1rem, env(safe-area-inset-top)) 1rem max(2rem, env(safe-area-inset-bottom));
+  }
+
+  .shell.game-layout.desktop-fit .game-list-card {
+    border-radius: var(--radius-md);
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .shell.game-layout.desktop-fit .game-list-card::after {
+    right: -0.5rem;
+  }
+
+  .shell.game-layout.desktop-fit .panel-card {
+    border-radius: var(--radius-md);
+    display: grid;
+    gap: 1rem;
+    grid-column: 2 / -1;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: auto;
+    padding: 1rem;
+  }
+
+  .game-title-row {
+    display: flex;
+  }
+
+  .game-title-actions {
+    justify-content: end;
+    margin-left: auto;
+  }
+
+  .shell.game-layout.desktop-fit .game-view {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1fr) var(--sidebar-inline-size) 1px var(--metadata-inline-size);
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .shell.game-layout.desktop-fit .panel-divider {
+    display: block;
+    min-height: 0;
+  }
+
+  .shell.game-layout.desktop-fit .board-panel {
+    background: transparent;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .shell.game-layout.desktop-fit .board {
+    block-size: min(100%, calc(100svh - var(--desktop-game-board-offset)));
+    inline-size: min(100%, calc(100svh - var(--desktop-game-board-offset)));
+    justify-self: center;
+  }
+
+  .shell.game-layout.desktop-fit .players-panel,
+  .shell.game-layout.desktop-fit .users-panel {
+    overflow-y: auto;
+    padding-inline: 0;
+  }
+
+  .shell.game-layout.desktop-fit .players-panel {
+    grid-template-areas:
+      "seats"
+      "actions"
+      "review"
+      "meta";
+  }
+
+  .shell.game-layout.desktop-fit .players-panel > .players-panel__metadata {
+    display: grid;
+  }
+}

@@ -1,0 +1,51 @@
+.scoring-help {
+  border-top: 1px solid var(--dialog-border);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.scoring-help p {
+  margin-bottom: 0.4rem;
+}
+
+.game-info-dialog,
+.invite-dialog,
+.landing-help-dialog {
+  background: var(--dialog-bg);
+  border: 1px solid var(--dialog-border);
+  border-radius: var(--radius-md);
+  color: var(--dialog-text);
+  inline-size: min(42rem, calc(100vw - 2rem));
+  max-inline-size: calc(100vw - 2rem);
+  max-width: calc(100vw - 2rem);
+  overflow-wrap: anywhere;
+  padding: 1rem;
+  word-break: normal;
+}
+
+.game-info-dialog a,
+.invite-dialog a,
+.landing-help-dialog a {
+  overflow-wrap: anywhere;
+}
+
+.invite-dialog input {
+  margin-block: 0.25rem 0.75rem;
+}
+
+.invite-rules {
+  margin-top: 1rem;
+}
+
+.invite-rules ul {
+  margin-block: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.dialog-close {
+  background: transparent;
+  color: var(--dialog-close-text);
+  float: right;
+  min-height: var(--icon-button-size);
+  padding: 0.2rem 0.45rem;
+}

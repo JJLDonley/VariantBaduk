@@ -1,0 +1,73 @@
+.custom-goban-dialog,
+.custom-goban-controls,
+.custom-goban-board,
+.color-go-options,
+.game-view,
+.board-panel,
+.players-panel,
+.users-panel,
+.game-meta,
+.actions,
+.seats,
+.user-list,
+.team-seat-box,
+.team-seat-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.panel-divider {
+  display: none;
+}
+
+.game-view {
+  gap: 1rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.board-panel {
+  align-items: start;
+  justify-items: center;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.players-panel,
+.users-panel {
+  align-content: start;
+  background: var(--panel-bg);
+  border: 0;
+  border-radius: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.game-title-row {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  min-height: 32px;
+}
+
+.game-title-row h2 {
+  margin-bottom: 0;
+}
+
+.game-title-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.game-info-toggle {
+  display: none;
+  background: transparent;
+  color: var(--button-text);
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0.1rem 0.35rem;
+}

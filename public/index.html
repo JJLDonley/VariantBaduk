@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Variant Go Server</title>
+    <link rel="stylesheet" href="/styles/tokens.css" />
+    <link rel="stylesheet" href="/styles/themes.css" />
+    <link rel="stylesheet" href="/styles/layout.css" />
+    <link rel="stylesheet" href="/styles/components.css" />
+    <link rel="stylesheet" href="/styles/forms.css" />
+    <link rel="stylesheet" href="/styles/buttons.css" />
+    <link rel="stylesheet" href="/styles/game-list.css" />
+    <link rel="stylesheet" href="/styles/create-game.css" />
+    <link rel="stylesheet" href="/styles/custom-goban.css" />
+    <link rel="stylesheet" href="/styles/joseki-card.css" />
+    <link rel="stylesheet" href="/styles/panels.css" />
+    <link rel="stylesheet" href="/styles/players.css" />
+    <link rel="stylesheet" href="/styles/dialogs.css" />
+    <link rel="stylesheet" href="/styles/board.css" />
+    <link rel="stylesheet" href="/styles/responsive.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <h1><a class="home-link" href="/">Variant Go</a></h1>
+        <div class="header-actions">
+          <button
+            id="app-remake"
+            class="app-back app-remake"
+            data-tooltip="Forking game settings"
+            type="button"
+          >
+            fork
+          </button>
+          <button id="app-help" class="app-help" type="button" aria-label="Show help">
+            about
+          </button>
+          <button
+            id="coordinate-toggle"
+            class="coordinate-toggle"
+            type="button"
+            aria-label="Coordinates"
+            aria-pressed="false"
+          >
+            A1
+          </button>
+          <div id="sound-control" class="sound-control">
+            <button
+              id="sound-toggle"
+              class="sound-toggle"
+              type="button"
+              aria-label="Sound volume"
+              aria-expanded="false"
+            >
+              🔊
+            </button>
+            <div id="sound-popover" class="sound-popover" hidden>
+              <input
+                id="sound-volume"
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                aria-label="Sound volume"
+              />
+            </div>
+          </div>
+          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Change theme">
+            ◐
+          </button>
+        </div>
+      </header>
+
+      <dialog class="ui-dialog landing-help-dialog">
+        <button class="dialog-close" data-landing-help-close type="button" aria-label="Close">
+          ×
+        </button>
+        <div data-landing-help-body></div>
+      </dialog>
+
+      <aside class="card ui-card game-list-card" aria-labelledby="game-list-title">
+        <form id="name-form" class="name-form">
+          <label>
+            Name
+            <input name="name" maxlength="16" autocomplete="nickname" />
+          </label>
+        </form>
+        <details class="games-disclosure">
+          <summary id="game-list-title">Games</summary>
+          <div id="game-list" class="game-list">Loading…</div>
+        </details>
+      </aside>
+
+      <section class="card ui-panel panel-card ui-scroll" aria-labelledby="create-game-title">
+        <div class="create-game-header">
+          <h2 id="create-game-title">Game Settings</h2>
+          <button type="submit" form="create-game-form">Create</button>
+        </div>
+        <form id="create-game-form" class="create-game-form">
+          <div class="core-settings stack ui-stack">
+            <input name="creatorSeat" type="hidden" value="black" />
+            <button class="seat-toggle" type="button" data-seat-toggle>Seat: Black</button>
+
+            <label>
+              Game name
+              <input name="gameName" maxlength="32" autocomplete="off" />
+            </label>
+
+            <label>
+              Board size
+              <select name="boardSize">
+                <option value="9">9 × 9</option>
+                <option value="13">13 × 13</option>
+                <option value="19">19 × 19</option>
+              </select>
+            </label>
+
+            <label>
+              Scoring
+              <select name="ruleset">
+                <option value="chinese">Chinese</option>
+                <option value="aga">AGA</option>
+                <option value="japanese">Japanese</option>
+              </select>
+            </label>
+
+            <div class="score-settings">
+              <label>
+                Komi
+                <input name="komi" type="number" step="0.5" value="7.5" />
+              </label>
+
+              <label>
+                Handicap
+                <select name="handicap">
+                  <option value="0">None</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                </select>
+              </label>
+            </div>
+
+            <label>
+              Time Setting
+              <select name="timeSystem">
+                <option value="none">None</option>
+                <option value="byoyomi">Byo-yomi</option>
+                <option value="fischer">Fischer</option>
+              </select>
+            </label>
+            <div class="time-options">
+              <label data-time-option="byoyomi fischer">
+                Main
+                <input name="mainTime" type="number" min="0" value="0" />
+              </label>
+              <label data-time-option="byoyomi">
+                Periods
+                <input name="periods" type="number" min="0" value="0" />
+              </label>
+              <label data-time-option="byoyomi">
+                Period time
+                <input name="periodTime" type="number" min="0" value="0" />
+              </label>
+              <label data-time-option="fischer">
+                Fischer increment
+                <input name="fischerIncrement" type="number" min="0" value="0" />
+              </label>
+            </div>
+          </div>
+
+          <div class="form-divider" aria-hidden="true"></div>
+
+          <div class="variant-settings ui-stack">
+            <h3>Variants</h3>
+            <div class="variant-buttons">
+              <label class="variant-button"><input type="checkbox" name="customGobanMode" />
+                CGoban</label>
+              <label class="variant-button"><input type="checkbox" name="pixel" /> Pixel</label>
+              <label class="variant-button"><input type="checkbox" name="zen" /> Zen</label>
+              <label class="variant-button"><input type="checkbox" name="colorGo" /> Color</label>
+              <label class="variant-button"><input type="checkbox" name="phantomMove" />
+                Phantom</label>
+              <label class="variant-button"><input type="checkbox" name="hiddenMove" />
+                Hidden</label>
+              <label class="variant-button"><input type="checkbox" name="josekiCard" /> Joseki
+                Card</label>
+              <label class="variant-button"><input type="checkbox" name="tetris" /> Tetris</label>
+              <label class="variant-button"><input type="checkbox" name="nPlusOne" /> N+1</label>
+              <label class="variant-button"><input type="checkbox" name="traitor" /> Traitor</label>
+            </div>
+            <div class="internal-divider" data-variant-options-divider aria-hidden="true"></div>
+            <div class="game-option-settings">
+              <label class="check">
+                <input type="checkbox" name="capturesGivePoints" /> Captures are points
+              </label>
+              <label>
+                Ponnukis are points
+                <input name="ponnukiPointValue" type="number" min="0" value="0" />
+              </label>
+            </div>
+            <div class="variant-options">
+              <div data-variant-option="customGobanMode">
+                <input name="customGoban" type="hidden" />
+                <button class="custom-goban-open" type="button">Edit Board</button>
+              </div>
+              <label data-variant-option="nPlusOne">
+                N+1 count
+                <input name="nPlusOneCount" type="number" min="1" value="1" />
+              </label>
+              <label data-variant-option="zen">
+                Zen players
+                <input name="zenPlayerCount" type="number" min="3" max="9" step="2" value="3" />
+              </label>
+              <div data-variant-option="colorGo" class="color-go-options">
+                <label class="color-go-count">Players <select name="colorGoPlayerCount">
+                    <option value="2">2</option>
+                    <option value="3" selected>3</option>
+                    <option value="4">4</option>
+                  </select></label>
+                <div class="color-go-row" aria-label="Player colors">
+                  <label>P1 <input name="colorGoColor1" type="color" value="#111111" /></label>
+                  <label>P2 <input name="colorGoColor2" type="color" value="#eeeeee" /></label>
+                  <label data-color-go-player="3">P3 <input
+                      name="colorGoColor3"
+                      type="color"
+                      value="#6c8cff"
+                    /></label>
+                  <label data-color-go-player="4">P4 <input
+                      name="colorGoColor4"
+                      type="color"
+                      value="#e07a5f"
+                    /></label>
+                </div>
+                <div class="color-go-row" aria-label="Player komis">
+                  <label class="color-go-komi">P2 komi <input
+                      name="colorGoKomi2"
+                      type="number"
+                      step="0.5"
+                      value="7.5"
+                    /></label>
+                  <label class="color-go-komi" data-color-go-player="3">P3 komi <input
+                      name="colorGoKomi3"
+                      type="number"
+                      step="0.5"
+                      value="0"
+                    /></label>
+                  <label class="color-go-komi" data-color-go-player="4">P4 komi <input
+                      name="colorGoKomi4"
+                      type="number"
+                      step="0.5"
+                      value="0"
+                    /></label>
+                </div>
+              </div>
+              <label class="check" data-variant-option="phantomMove">
+                <input type="checkbox" name="phantomHideViewers" /> Hide phantom stones from viewers
+              </label>
+              <div data-variant-option="hiddenMove" class="ui-stack">
+                <label>Hidden stones per player <input
+                    name="hiddenMoveCount"
+                    type="number"
+                    min="1"
+                    max="20"
+                    value="3"
+                  /></label>
+                <label class="check"><input type="checkbox" name="hiddenMoveShowViewers" checked />
+                  Show hidden setup stones to viewers</label>
+              </div>
+              <div data-variant-option="josekiCard" class="ui-stack">
+                <button class="joseki-card-open" type="button">Preview Joseki Cards</button>
+                <p class="ui-muted">
+                  Joseki Card requires 19×19. Selection and placement happen before normal play.
+                </p>
+              </div>
+              <label data-variant-option="traitor">
+                Traitor moves
+                <input name="traitorMoveCount" type="number" min="1" value="6" />
+              </label>
+              <label class="check" data-variant-option="traitor">
+                <input type="checkbox" name="showTraitorCounter" /> Display traitor counter
+              </label>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <p id="status" class="sr-only" aria-live="polite">Checking server…</p>
+    </main>
+  </body>
+</html>

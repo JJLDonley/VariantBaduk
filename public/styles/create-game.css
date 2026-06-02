@@ -1,0 +1,139 @@
+.stack,
+.create-game-form,
+.variant-settings,
+.variant-buttons,
+.variant-options,
+.game-option-settings,
+.time-settings,
+.time-options,
+.score-settings {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-divider {
+  display: none;
+}
+
+.create-game-header {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.create-game-header h2 {
+  margin-bottom: 0;
+}
+
+.create-game-header button {
+  flex: 0 0 auto;
+}
+
+.create-game-form {
+  align-items: start;
+}
+
+.variant-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.variant-options,
+.time-options {
+  gap: 0.75rem;
+}
+
+.score-settings {
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) minmax(7rem, 0.65fr);
+}
+
+.seat-toggle {
+  width: fit-content;
+}
+
+.variant-button {
+  align-items: center;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: var(--control-min-block);
+  padding: var(--button-padding-block) var(--button-padding-inline);
+  width: fit-content;
+}
+
+.variant-button:has(input:checked) {
+  background: var(--control-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.variant-button.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.variant-button input {
+  display: none;
+}
+
+.internal-divider {
+  background: linear-gradient(to right, transparent, var(--divider-color) 8%, var(--divider-color) 92%, transparent);
+  block-size: 1px;
+  inline-size: 100%;
+}
+
+[data-time-option][hidden],
+[data-variant-option][hidden],
+[data-variant-options-divider][hidden] {
+  display: none;
+}
+
+.color-go-options {
+  align-items: start;
+  grid-template-columns: 1fr;
+}
+
+.color-go-row {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.color-go-options label {
+  display: grid;
+  gap: 0.2rem;
+  width: max-content;
+}
+
+.color-go-options select,
+.color-go-options input[type="color"] {
+  inline-size: 3rem;
+  min-height: 32px;
+  padding: 0;
+}
+
+.color-go-options input[type="number"] {
+  inline-size: 4rem;
+  min-height: 32px;
+  padding: 0.2rem 0.35rem;
+}
+
+.color-go-options input[type="color"] {
+  cursor: pointer;
+}
+
+.color-go-count select {
+  inline-size: 3.4rem;
+}
+
+.color-go-komi {
+  inline-size: max-content;
+}

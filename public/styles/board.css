@@ -1,0 +1,333 @@
+.board {
+  aspect-ratio: 1 / 1;
+  background: var(--board-bg);
+  border: 2px solid var(--board-border);
+  border-radius: var(--radius-sm);
+  inline-size: min(100%, 100dvw, 100dvh);
+  block-size: auto;
+  margin-bottom: 0;
+  max-block-size: 100%;
+  max-inline-size: 100%;
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
+}
+
+.board-line,
+.coord,
+.star-point {
+  pointer-events: none;
+  position: absolute;
+}
+
+.board-line {
+  background: var(--board-line);
+  z-index: 0;
+}
+
+.board-line-v {
+  block-size: 86%;
+  inline-size: 1px;
+  top: 7%;
+  transform: translateX(-0.5px);
+}
+
+.board-line-h {
+  block-size: 1px;
+  inline-size: 86%;
+  left: 7%;
+  transform: translateY(-0.5px);
+}
+
+.coord {
+  color: var(--board-line);
+  font-size: clamp(0.55rem, 2.2vw, 0.8rem);
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.8;
+  z-index: 0;
+}
+
+.coord-top {
+  top: 1.8%;
+  transform: translateX(-50%);
+}
+
+.coord-bottom {
+  bottom: 1.8%;
+  transform: translateX(-50%);
+}
+
+.coord-left {
+  left: 1.8%;
+  transform: translateY(-50%);
+}
+
+.coord-right {
+  right: 1.8%;
+  transform: translateY(-50%);
+}
+
+.star-point {
+  background: var(--board-line);
+  block-size: clamp(0.25rem, 1.2%, 0.45rem);
+  border-radius: 999px;
+  inline-size: clamp(0.25rem, 1.2%, 0.45rem);
+  transform: translate(-50%, -50%);
+  z-index: 0;
+}
+
+.territory-shade {
+  aspect-ratio: 1 / 1;
+  background: var(--territory-color);
+  border-radius: 0.2rem;
+  inline-size: calc(var(--board-step) * 0.72);
+  opacity: 0.22;
+  pointer-events: none;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+}
+
+.point {
+  aspect-ratio: 1 / 1;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  inline-size: calc(var(--board-step) * 1.08);
+  min-height: 0;
+  padding: 0;
+  position: absolute;
+  touch-action: none;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.point::before {
+  border-radius: inherit;
+  content: "";
+  display: block;
+  inset: -35%;
+  position: absolute;
+}
+
+.point::after {
+  border-radius: 999px;
+  content: "";
+  display: block;
+  inset: 6%;
+  opacity: var(--stone-opacity, 1);
+  position: absolute;
+}
+
+.board .point:hover,
+.board .point:focus-visible {
+  background: transparent;
+  outline: none;
+}
+
+.point[data-color="-1"] {
+  display: none;
+}
+
+.point.is-dead::after {
+  opacity: 0.25;
+  outline: 2px solid var(--color-danger);
+}
+
+.point.is-no-score::before {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--no-score-stripe),
+    var(--no-score-stripe) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+  border-radius: 0.15rem;
+  inset: 8%;
+}
+
+.point[data-color="1"]::after {
+  background: var(--stone-color, var(--stone-black));
+}
+
+.point[data-color="2"]::after {
+  background: var(--stone-color, var(--stone-white));
+  box-shadow: inset 0 0 0 1px var(--stone-white-border);
+}
+
+.point[data-color="3"]::after,
+.point[data-color="4"]::after,
+.point[data-color="5"]::after,
+.point[data-color="6"]::after,
+.point[data-color="7"]::after,
+.point[data-color="8"]::after,
+.point[data-color="9"]::after {
+  background: var(--stone-color, var(--stone-neutral));
+}
+
+.point[data-color="99"]::after {
+  background: var(--stone-neutral);
+  box-shadow: inset 0 0 0 1px var(--surface-border);
+}
+
+.board .point.is-preview[data-color="0"]::after {
+  background: color-mix(in srgb, var(--preview-color, var(--stone-neutral)) 55%, transparent);
+}
+
+.board[data-preview-team="2"] .point.is-preview[data-color="0"]::after {
+  box-shadow: inset 0 0 0 1px var(--preview-outline);
+}
+
+.team-seat-box {
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
+}
+
+.team-seat-box[data-team="1"] {
+  border-color: var(--stone-black);
+}
+
+.team-seat-box[data-team="2"] {
+  border-color: var(--stone-white-border);
+}
+
+.seat {
+  align-items: start;
+  background: var(--surface-bg);
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--surface-text);
+  cursor: default;
+  display: grid;
+  gap: 0.35rem 0.5rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.65rem 0.8rem;
+  text-align: left;
+}
+
+.seat[data-open="true"] {
+  cursor: pointer;
+}
+
+.seat-player,
+.seat-time,
+.seat-points {
+  min-width: 0;
+}
+
+.seat-player {
+  align-items: center;
+  display: flex;
+  gap: 0.45rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seat-time {
+  color: var(--meta-text);
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 0.9rem;
+}
+
+.seat-points {
+  align-self: end;
+  color: var(--meta-text);
+  font-size: 0.9rem;
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+}
+
+.user-row {
+  align-items: center;
+  display: flex;
+  gap: 0.45rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seat-action {
+  align-self: center;
+  background: transparent;
+  color: var(--meta-text);
+  font-size: 0.9rem;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  line-height: 1;
+  min-height: 1.4em;
+  padding: 0 0.35rem;
+}
+
+.user-row {
+  min-height: 32px;
+}
+
+.color-dot {
+  background: var(--stone-neutral);
+  border-radius: 999px;
+  display: inline-block;
+  flex: 0 0 auto;
+  block-size: 0.9rem;
+  inline-size: 0.9rem;
+}
+
+.color-dot[data-team="0"] {
+  background: var(--stone-neutral);
+}
+
+.color-dot[data-team="1"] {
+  background: var(--stone-color, var(--stone-black));
+  box-shadow: inset 0 0 0 1px var(--stone-black-border);
+}
+
+.color-dot[data-team="2"] {
+  background: var(--stone-color, var(--stone-white));
+  box-shadow: inset 0 0 0 1px var(--stone-white-border);
+}
+
+.color-dot[data-team="3"] {
+  background: var(--stone-color, var(--stone-blue));
+}
+
+.color-dot[data-team="4"] {
+  background: var(--stone-color, var(--stone-red));
+}
+
+.color-dot[data-team="5"] {
+  background: var(--stone-color, var(--stone-green));
+}
+
+.color-dot[data-team="6"] {
+  background: var(--stone-yellow);
+}
+
+.color-dot[data-team="7"] {
+  background: var(--stone-pink);
+}
+
+.color-dot[data-team="8"] {
+  background: var(--stone-cyan);
+}
+
+.color-dot[data-team="9"] {
+  background: var(--stone-purple);
+}
+
+.active-stone {
+  margin-left: -0.2rem;
+}
+
+.turn-marker {
+  color: var(--meta-text);
+  display: inline-block;
+  font-style: normal;
+  inline-size: 1em;
+  text-align: center;
+}

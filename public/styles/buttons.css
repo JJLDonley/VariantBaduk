@@ -1,0 +1,103 @@
+button {
+  background: var(--button-bg);
+  border: 1px solid var(--button-border);
+  border-radius: var(--radius-sm);
+  color: var(--button-text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+  min-height: var(--control-min-block);
+  padding: var(--button-padding-block) var(--button-padding-inline);
+}
+
+button:hover:not(:disabled) {
+  background: var(--button-bg-hover);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--button-focus-ring);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: var(--control-disabled-opacity);
+}
+
+button[data-tooltip] {
+  position: relative;
+}
+
+button[data-tooltip]::after {
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0.35rem 1rem rgb(0 0 0 / 18%);
+  color: var(--surface-text);
+  content: attr(data-tooltip);
+  font-size: 0.78rem;
+  font-weight: 650;
+  inset-block-end: calc(100% + 0.35rem);
+  inset-inline-start: 50%;
+  line-height: 1;
+  opacity: 0;
+  padding: 0.35rem 0.5rem;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(-50%) translateY(0.15rem);
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+  z-index: 20;
+}
+
+button[data-tooltip]:hover::after,
+button[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.app-remake[data-tooltip]::after {
+  inset-block-start: calc(100% + 0.35rem);
+  inset-block-end: auto;
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+  transform: translateY(-0.15rem);
+}
+
+.app-remake[data-tooltip]:hover::after,
+.app-remake[data-tooltip]:focus-visible::after {
+  transform: translateY(0);
+}
+
+button.is-confirmed {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--color-shadow-accent);
+}
+
+.button-icon,
+.app-back,
+.theme-toggle,
+.sound-toggle,
+.coordinate-toggle,
+.app-help,
+.game-info-toggle,
+.dialog-close,
+.custom-goban-close {
+  --button-bg: transparent;
+  --button-bg-hover: transparent;
+  --button-text: var(--surface-text);
+}
+
+.button-small,
+.name-form button,
+.actions button,
+.history-actions button {
+  min-height: var(--control-min-block-sm);
+  padding: 0.35rem 0.45rem;
+}
+
+.button-danger,
+.actions button[data-action="resign"] {
+  --button-border: var(--color-danger);
+  --button-text: var(--color-danger);
+}
