@@ -184,6 +184,7 @@ function showManualCopyDialog(text) {
 }
 
 // client/create/custom-goban.ts
+var CUSTOM_GOBAN_AUTOSAVE_KEY = "baduk:custom-goban-autosave";
 function parseCustomGoban(value, fallbackSize = 9) {
   if (!value) return emptyGoban(fallbackSize);
   try {
@@ -191,6 +192,16 @@ function parseCustomGoban(value, fallbackSize = 9) {
   } catch {
     return emptyGoban(fallbackSize);
   }
+}
+function restoreCustomGobanAutosave(root = document) {
+  const form = root.querySelector("#create-game-form");
+  const hidden = form?.querySelector("[name='customGoban']");
+  const toggle = form?.querySelector("[name='customGobanMode']");
+  const saved = localStorage.getItem(CUSTOM_GOBAN_AUTOSAVE_KEY);
+  if (!hidden || !saved || hidden.value) return;
+  const goban = parseCustomGoban(saved, Number(form?.querySelector("[name='boardSize']")?.value ?? 9));
+  hidden.value = JSON.stringify(goban);
+  if (toggle) toggle.checked = true;
 }
 function openCustomGobanPreview(customGoban, statusElement2) {
   if (!customGoban) return;
@@ -231,6 +242,11 @@ function openCustomGobanEditor(statusElement2) {
   const hidden = form?.querySelector("[name='customGoban']");
   if (!hidden) return;
   const goban = parseCustomGoban(hidden.value, size);
+  const autosave = () => {
+    hidden.value = JSON.stringify(goban);
+    localStorage.setItem(CUSTOM_GOBAN_AUTOSAVE_KEY, hidden.value);
+  };
+  autosave();
   const dialog = document.createElement("dialog");
   dialog.className = "ui-dialog custom-goban-dialog";
   let resizeMode = "both";
@@ -257,6 +273,7 @@ function openCustomGobanEditor(statusElement2) {
       point.addEventListener("click", () => {
         const index = Number(point.dataset.index);
         goban.points[index] = goban.points[index] === -1 ? 0 : -1;
+        autosave();
         render();
       });
     }
@@ -264,11 +281,14 @@ function openCustomGobanEditor(statusElement2) {
   const resize = (width, height) => {
     const next = Array(width * height).fill(0);
     for (let y = 0; y < Math.min(height, goban.height); y++) {
-      for (let x = 0; x < Math.min(width, goban.width); x++) next[y * width + x] = goban.points[y * goban.width + x];
+      for (let x = 0; x < Math.min(width, goban.width); x++) {
+        next[y * width + x] = goban.points[y * goban.width + x];
+      }
     }
     goban.width = width;
     goban.height = height;
     goban.points = next;
+    autosave();
     render();
   };
   dialog.addEventListener("click", (event) => {
@@ -287,17 +307,20 @@ function openCustomGobanEditor(statusElement2) {
     }
     if (action === "reset") resize(size, size);
     if (action === "save") {
-      hidden.value = JSON.stringify(goban);
+      autosave();
       dialog.close();
     }
     if (action === "copy") copyText(JSON.stringify(goban), event.target, statusElement2, "Copied");
-    if (action === "paste") navigator.clipboard?.readText().then((text) => {
-      const pasted = parseCustomGoban(text, size);
-      goban.width = pasted.width;
-      goban.height = pasted.height;
-      goban.points = pasted.points;
-      render();
-    });
+    if (action === "paste") {
+      navigator.clipboard?.readText().then((text) => {
+        const pasted = parseCustomGoban(text, size);
+        goban.width = pasted.width;
+        goban.height = pasted.height;
+        goban.points = pasted.points;
+        autosave();
+        render();
+      });
+    }
     if (action === "close") dialog.close();
   });
   dialog.addEventListener("close", () => dialog.remove());
@@ -681,6 +704,7 @@ function josekiCardDialogHtml(cards) {
 
 // client/create/form-bind.ts
 function bindCreateGameForm(submitHandler, statusElement2, root = document) {
+  restoreCustomGobanAutosave(root);
   root.querySelector("#create-game-form")?.addEventListener("submit", submitHandler);
   root.querySelector("[name='timeSystem']")?.addEventListener("change", updateTimeOptions);
   root.querySelector("[name='ruleset']")?.addEventListener("change", updateRuleDefaults);
