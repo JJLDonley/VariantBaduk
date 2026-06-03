@@ -67,7 +67,7 @@ function bindInfoDialog(panel: ParentNode): void {
     "click",
     () => infoDialog?.showModal(),
   );
-  panel.querySelector(".dialog-close")?.addEventListener("click", () => infoDialog?.close());
+  infoDialog?.querySelector(".dialog-close")?.addEventListener("click", () => infoDialog.close());
 }
 
 function bindCustomGobanPreview({ panel, game, statusElement }: BindGameEventsOptions): void {
@@ -196,16 +196,32 @@ function bindJosekiSetup({ panel, game, session, sendAction }: BindGameEventsOpt
     [];
   const requiredCount = Math.max(2, ownedSetups.length * 2);
   const board = panel.querySelector<HTMLElement>(".board");
-  for (const button of panel.querySelectorAll<HTMLButtonElement>("[data-joseki-card]")) {
+  const selectionDialog = panel.querySelector<HTMLDialogElement>("[data-joseki-selection-dialog]");
+  panel.querySelector<HTMLButtonElement>("[data-joseki-selection-open]")?.addEventListener(
+    "click",
+    () => selectionDialog?.showModal(),
+  );
+  selectionDialog?.querySelector("[data-joseki-selection-close]")?.addEventListener(
+    "click",
+    () => selectionDialog.close(),
+  );
+  if (selectionDialog && ownedSetups.length > 0 && game.josekiSetup?.phase === "select") {
+    try {
+      if (!selectionDialog.open) selectionDialog.showModal();
+    } catch {
+      selectionDialog.setAttribute("open", "");
+    }
+  }
+  for (const button of panel.querySelectorAll<HTMLButtonElement>("[data-joseki-card-id]")) {
     button.addEventListener("pointerenter", () => {
-      if (board && button.dataset.josekiCard) {
-        hoverJosekiCardOnBoard(board, game, button.dataset.josekiCard);
+      if (board && button.dataset.josekiCardId) {
+        hoverJosekiCardOnBoard(board, game, button.dataset.josekiCardId);
       }
     });
     button.addEventListener("pointerleave", () => clearJosekiCardHover(board));
     button.addEventListener("click", async () => {
-      const id = button.dataset.josekiCard;
-      if (!id) return;
+      const id = button.dataset.josekiCardId;
+      if (!id || ownedSetups.length === 0) return;
       const selected = new Set(ownedSetups.flatMap((entry) => entry.selectedCardIds));
       if (selected.has(id)) selected.delete(id);
       else if (selected.size < requiredCount) selected.add(id);

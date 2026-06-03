@@ -1,11 +1,45 @@
-.joseki-card-dialog {
+.joseki-card-dialog,
+.joseki-selection-dialog {
   inline-size: min(52rem, calc(100vw - 2rem));
+}
+
+.joseki-card-dialog,
+.joseki-selection-dialog {
+  max-block-size: min(44rem, calc(100vh - 2rem));
+  overflow: auto;
+}
+
+.j-card::-webkit-scrollbar {
+  display: none;
+}
+
+.joseki-selection-notice {
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.joseki-selection-notice p,
+.joseki-selection-dialog p {
+  margin: 0;
+}
+
+.joseki-selection-actions {
+  margin-top: var(--space-3);
+}
+
+.joseki-selection-actions button {
+  width: 100%;
 }
 
 .j-card-grid {
   display: grid;
   gap: var(--space-3);
-  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 10rem));
+  justify-content: center;
 }
 
 .j-card {
@@ -16,7 +50,9 @@
   display: grid;
   gap: var(--space-2);
   min-width: 0;
+  overflow: hidden;
   padding: var(--space-3);
+  scrollbar-width: none;
 }
 
 .j-card.is-selected {
@@ -27,6 +63,7 @@
 .j-card__board {
   aspect-ratio: var(--j-card-board-width, 1) / var(--j-card-board-height, 1);
   align-self: center;
+  justify-self: center;
   inline-size: min(
     100%,
     calc(var(--j-card-board-width, 1) / var(--j-card-board-height, 1) * 8.5rem)

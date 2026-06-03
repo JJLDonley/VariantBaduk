@@ -84,6 +84,7 @@ export type CreateGameConfig =
 
 export type HistoryEntry = {
   action?: string;
+  phase?: "joseki" | "hidden" | "play" | "scoring" | "done" | string;
   board?: number[];
   boardOpacity?: number[];
 };

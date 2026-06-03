@@ -222,8 +222,9 @@ function resign(state: SharedState, board: Board, mods: RuleMods): MakeActionRes
 
 function rollback(state: SharedState): MakeActionResult {
   if (state.history.length < 2) return { ok: false, error: "illegal" };
+  const previous = state.history.at(-2)!;
+  if (state.phase === "play" && previous.phase !== "play") return { ok: false, error: "illegal" };
   state.history.pop();
-  const previous = state.history.at(-1)!;
   return { ok: true, state: stateFromHistory(state, previous) };
 }
 

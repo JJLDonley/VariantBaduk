@@ -1,5 +1,6 @@
 import { DEFAULT_CONFIG, normalizeConfig } from "./configValidation.ts";
-import { Board } from "./engine/board.ts";
+import { Board, findGroups } from "./engine/board.ts";
+import { captureDeadOpponents } from "./engine/capture.ts";
 import { createGame, makeAction } from "./engine/game.ts";
 import { pushHistory } from "./engine/state.ts";
 import { placementPoints } from "./engine/variants/pixel.ts";
@@ -91,6 +92,7 @@ export type ClientGameView = {
   history?: {
     board: number[];
     boardOpacity?: number[];
+    phase: SharedState["phase"];
     action?: "place" | "placeHidden" | "pass" | "resign";
   }[];
 };
@@ -484,6 +486,7 @@ export function toClientGameView(record: GameRecord, viewerUuid?: string): Clien
       return {
         board: view.board,
         ...(view.boardOpacity ? { boardOpacity: view.boardOpacity } : {}),
+        phase: history.phase,
         action: history.action,
       };
     }),
@@ -722,30 +725,65 @@ function placeJoseki(record: GameRecord, placement: JosekiPlacement): boolean {
   const card = listJosekiCardsSync().find((card) => card.id === placement.cardId);
   if (!card) return false;
   const stones = transformJosekiCard(card, { ...placement, flipY: false });
-  if (
-    stones.some((stone) => {
-      if (
-        stone.x < 0 || stone.y < 0 || stone.x >= record.state.boardWidth ||
-        stone.y >= record.state.boardHeight
-      ) return true;
-      return record.state.board[stone.y * record.state.boardWidth + stone.x] !== 0;
-    })
-  ) return false;
+  let board = Board.from(record.state.boardWidth, record.state.boardHeight, record.state.board);
+  const points = [...record.state.points];
+  const capturedStones = [...record.state.play.capturedStones];
+  const pointCount = record.state.boardWidth * record.state.boardHeight;
+  const trackPhantom = record.config.variants.phantomMove;
+  const phantomOwners = trackPhantom
+    ? [...(record.state.play.phantomOwners ?? Array(pointCount).fill(0))]
+    : undefined;
+  const phantomRevealed = trackPhantom
+    ? [...(record.state.play.phantomRevealed ?? Array(pointCount).fill(false))]
+    : undefined;
+  let captureCount = record.state.play.captureCount;
+
   for (const stone of stones) {
+    if (!board.playable(stone) || board.get(stone) !== 0 || stone.color <= 0) continue;
+    const nextBoard = board.clone();
+    nextBoard.set(stone, stone.color);
+    const capturedGroups = captureDeadOpponents(nextBoard, stone.color);
+    const captured = capturedGroups.reduce((total, group) => total + group.points.length, 0);
+    const ownDead = findGroups(nextBoard).some((group) =>
+      group.color === stone.color && group.liberties === 0
+    );
+    if (ownDead) continue;
+
+    board = nextBoard;
     const index = stone.y * record.state.boardWidth + stone.x;
-    record.state.board[index] = stone.color;
-    if (record.config.variants.phantomMove) {
-      record.state.play.phantomOwners ??= Array(record.state.boardWidth * record.state.boardHeight)
-        .fill(0);
-      record.state.play.phantomRevealed ??= Array(
-        record.state.boardWidth * record.state.boardHeight,
-      ).fill(false);
-      record.state.play.phantomOwners[index] = stone.color;
-      record.state.play.phantomRevealed[index] = false;
+    if (trackPhantom && phantomOwners && phantomRevealed) {
+      phantomOwners[index] = stone.color;
+      phantomRevealed[index] = false;
+    }
+    if (captured > 0) {
+      capturedStones[stone.color - 1] = (capturedStones[stone.color - 1] ?? 0) + captured;
+      captureCount += captured;
+      if (record.config.variants.capturesGivePoints) points[stone.color - 1] += captured * 2;
+      const ponnuki = record.config.variants.ponnukiPointValue ?? 0;
+      if (ponnuki) {
+        points[stone.color - 1] += capturedGroups.filter((group) => group.points.length === 1)
+          .length * ponnuki;
+      }
+      if (trackPhantom && phantomOwners && phantomRevealed) {
+        for (const capturedPoint of capturedGroups.flatMap((group) => group.points)) {
+          const capturedIndex = capturedPoint.y * record.state.boardWidth + capturedPoint.x;
+          phantomOwners[capturedIndex] = 0;
+          phantomRevealed[capturedIndex] = false;
+        }
+      }
     }
   }
+
+  record.state.board = board.points;
+  record.state.points = points;
+  record.state.play.capturedStones = capturedStones;
+  record.state.play.captureCount = captureCount;
+  if (trackPhantom && phantomOwners && phantomRevealed) {
+    record.state.play.phantomOwners = phantomOwners;
+    record.state.play.phantomRevealed = phantomRevealed;
+  }
   record.state.history.push({
-    hash: record.state.board.join(","),
+    hash: board.hash(),
     board: [...record.state.board],
     points: [...record.state.points],
     turn: record.state.turn,
@@ -791,6 +829,10 @@ function finishJosekiSetup(record: GameRecord): void {
   startHiddenSetupIfReady(record, Date.now());
   if (record.state.phase === "play") {
     record.state.clockUpdatedAt = clocksEnabled(record.config) ? Date.now() : undefined;
+    pushHistory(
+      record.state,
+      Board.from(record.state.boardWidth, record.state.boardHeight, record.state.board),
+    );
   }
 }
 

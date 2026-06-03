@@ -19,6 +19,7 @@ export type GameHistoryView = {
   playableHistoryIndex: number;
   canNavigateHistory: boolean;
   canUsePlayActions: boolean;
+  canUndo: boolean;
   canResign: boolean;
   passOrDoneDisabled: boolean;
 };
@@ -54,6 +55,8 @@ export function gameHistoryView(
     Boolean(currentSeat && !currentSeat.resigned);
   const canAcceptScore = allSeatsFilled && !viewingHistory && game.phase === "scoring" &&
     Boolean(currentActionSeat(game, session, "scoring"));
+  const canUndo = canUsePlayActions && rawHistory.length >= 2 &&
+    rawHistory.at(-2)?.phase === "play";
   const canResign = canUsePlayActions;
   const passOrDoneDisabled = game.phase === "scoring" ? !canAcceptScore : !canUsePlayActions;
   return {
@@ -69,6 +72,7 @@ export function gameHistoryView(
     playableHistoryIndex,
     canNavigateHistory,
     canUsePlayActions,
+    canUndo,
     canResign,
     passOrDoneDisabled,
   };

@@ -254,6 +254,11 @@ async function showGame(gameId: string | number | undefined) {
 function renderGame(game: Game) {
   game = applyLocalName(game);
   const helpWasOpen = document.querySelector<HTMLDialogElement>(".game-info-dialog")?.open ?? false;
+  const josekiSelectionDialog = document.querySelector<HTMLDialogElement>(
+    "[data-joseki-selection-dialog]",
+  );
+  const josekiSelectionWasOpen = josekiSelectionDialog?.open ?? false;
+  const josekiSelectionScrollTop = josekiSelectionDialog?.scrollTop ?? 0;
   maybePlayStoneSound(currentGame, game);
   currentGame = game;
   clearTimeout(gameClockTimer);
@@ -270,6 +275,7 @@ function renderGame(game: Game) {
     playableHistoryIndex,
     canNavigateHistory,
     canUsePlayActions,
+    canUndo,
     canResign,
     passOrDoneDisabled,
   } = gameHistoryView(game, session, historyViewByGame);
@@ -288,6 +294,7 @@ function renderGame(game: Game) {
     viewingHistory,
     passOrDoneDisabled,
     canUsePlayActions,
+    canUndo,
     canResign,
     showCoordinates,
   });
@@ -316,6 +323,13 @@ function renderGame(game: Game) {
     ? `done · winner: ${winnerText(game)}`
     : `${game.phase} · turn: ${activeSeat?.id ?? "none"}`;
   if (helpWasOpen) panel.querySelector<HTMLDialogElement>(".game-info-dialog")?.showModal();
+  const nextJosekiSelectionDialog = panel.querySelector<HTMLDialogElement>(
+    "[data-joseki-selection-dialog]",
+  );
+  if (josekiSelectionWasOpen && nextJosekiSelectionDialog) {
+    if (!nextJosekiSelectionDialog.open) nextJosekiSelectionDialog.showModal();
+    nextJosekiSelectionDialog.scrollTop = josekiSelectionScrollTop;
+  }
   if (
     game.phase === "play" && game.clockUpdatedAt !== undefined && game.config.time?.system &&
     game.config.time.system !== "none"

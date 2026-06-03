@@ -10,7 +10,7 @@ export async function openJosekiCardDialog(statusElement: Element | null): Promi
   }
   const { cards } = await readJosekiCards(response);
   const dialog = document.createElement("dialog");
-  dialog.className = "ui-dialog joseki-card-dialog";
+  dialog.className = "ui-dialog ui-scroll joseki-card-dialog";
   dialog.innerHTML = josekiCardDialogHtml(cards);
   document.body.append(dialog);
   dialog.querySelector(".dialog-close")?.addEventListener("click", () => dialog.close());

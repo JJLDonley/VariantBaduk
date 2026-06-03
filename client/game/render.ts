@@ -12,6 +12,7 @@ import { teamSeatsHtml } from "./seats-render.ts";
 import { territoryShadeHtml } from "./territory.ts";
 import { variantRulesHelpHtml } from "./variants.ts";
 import { josekiPlacementOverlay } from "./joseki-placement.ts";
+import { josekiCardGridHtml } from "./joseki-card.ts";
 import type { Game, Session } from "../types/domain.ts";
 
 type GameViewContext = {
@@ -26,6 +27,7 @@ type GameViewContext = {
   viewingHistory: boolean;
   passOrDoneDisabled: boolean;
   canUsePlayActions: boolean;
+  canUndo: boolean;
   canResign: boolean;
   showCoordinates: boolean;
 };
@@ -43,6 +45,7 @@ export function gameViewHtml(context: GameViewContext): string {
     viewingHistory,
     passOrDoneDisabled,
     canUsePlayActions,
+    canUndo,
     canResign,
     showCoordinates,
   } = context;
@@ -106,7 +109,7 @@ export function gameViewHtml(context: GameViewContext): string {
           <button data-action="${game.phase === "scoring" ? "acceptScore" : "pass"}" ${
     passOrDoneDisabled ? "disabled" : ""
   }>${game.phase === "scoring" ? "Done" : "Pass"}</button>
-          <button data-action="cancel" ${!canUsePlayActions ? "disabled" : ""}>Undo</button>
+          <button data-action="cancel" ${!canUndo ? "disabled" : ""}>Undo</button>
           <button data-action="resign" ${!canResign ? "disabled" : ""}>Resign</button>
         </div>
         <div class="players-panel__metadata">${gameInfoHtml(game)}</div>
@@ -156,23 +159,37 @@ function josekiSetupHtml(game: Game, session: Session | undefined): string {
     const selected = new Set(ownedSetups.flatMap((entry) => entry.selectedCardIds));
     const requiredCount = Math.max(2, ownedSetups.length * 2);
     const seconds = Math.max(0, Math.ceil((setup.selectionDeadlineAt - Date.now()) / 1000));
+    const canSelect = ownedSetups.length > 0;
+    const pickText = requiredCount === 2
+      ? "Pick 2 joseki cards"
+      : `Pick ${requiredCount} joseki cards`;
     return `
-      <div class="joseki-setup players-panel__setup">
-        <strong>Select ${requiredCount} joseki</strong>
-        <span>${seconds}s</span>
-        <div class="joseki-setup__cards">
-          ${
-      setup.availableCards.map((card) =>
-        `<button data-joseki-card="${card.id}" class="${
-          selected.has(card.id) ? "is-confirmed" : ""
-        }" type="button">${escapeHtml(card.name)}</button>`
-      ).join("")
-    }
-        </div>
-        <button data-joseki-selection-confirm type="button" ${
-      selected.size === requiredCount ? "" : "disabled"
-    }>Confirm</button>
+      <div class="joseki-selection-notice players-panel__setup">
+        <strong>${canSelect ? pickText : "Joseki card selection"}</strong>
+        <p class="muted-text">${
+      canSelect
+        ? `${pickText} before play starts. Selection closes in ${seconds}s.`
+        : `Waiting for players to pick joseki cards. Selection closes in ${seconds}s.`
+    }</p>
+        <p>${selected.size} / ${requiredCount} selected</p>
+        <button data-joseki-selection-open type="button" ${
+      canSelect ? "" : "disabled"
+    }>Choose cards</button>
       </div>
+      <dialog class="ui-dialog ui-scroll joseki-selection-dialog" data-joseki-selection-dialog>
+        <button class="dialog-close" data-joseki-selection-close type="button" aria-label="Close">×</button>
+        <h3>${pickText}</h3>
+        <p class="muted-text">Select exactly ${requiredCount} card${
+      requiredCount === 1 ? "" : "s"
+    }. Your selected cards are highlighted.</p>
+        <p>${selected.size} / ${requiredCount} selected · ${seconds}s remaining</p>
+        ${josekiCardGridHtml(setup.availableCards, selected)}
+        <div class="actions joseki-selection-actions">
+          <button data-joseki-selection-confirm type="button" ${
+      selected.size === requiredCount ? "" : "disabled"
+    }>Confirm selection</button>
+        </div>
+      </dialog>
     `;
   }
   const activeSeatId = setup.placementOrder[setup.placementIndex];

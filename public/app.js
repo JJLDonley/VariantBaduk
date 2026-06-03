@@ -663,7 +663,7 @@ async function openJosekiCardDialog(statusElement2) {
   }
   const { cards } = await readJosekiCards(response);
   const dialog = document.createElement("dialog");
-  dialog.className = "ui-dialog joseki-card-dialog";
+  dialog.className = "ui-dialog ui-scroll joseki-card-dialog";
   dialog.innerHTML = josekiCardDialogHtml(cards);
   document.body.append(dialog);
   dialog.querySelector(".dialog-close")?.addEventListener("click", () => dialog.close());
@@ -1405,7 +1405,7 @@ function bindPlayersToggle(panel2) {
 function bindInfoDialog(panel2) {
   const infoDialog = panel2.querySelector(".game-info-dialog");
   panel2.querySelector(".game-info-toggle")?.addEventListener("click", () => infoDialog?.showModal());
-  panel2.querySelector(".dialog-close")?.addEventListener("click", () => infoDialog?.close());
+  infoDialog?.querySelector(".dialog-close")?.addEventListener("click", () => infoDialog.close());
 }
 function bindCustomGobanPreview({ panel: panel2, game, statusElement: statusElement2 }) {
   for (const link of panel2.querySelectorAll("[data-cgoban-preview]")) {
@@ -1513,16 +1513,26 @@ function bindJosekiSetup({ panel: panel2, game, session: session2, sendAction: s
   const ownedSetups = game.josekiSetup?.seats.filter((entry) => ownedSeatIds.has(entry.seatId)) ?? [];
   const requiredCount = Math.max(2, ownedSetups.length * 2);
   const board = panel2.querySelector(".board");
-  for (const button of panel2.querySelectorAll("[data-joseki-card]")) {
+  const selectionDialog = panel2.querySelector("[data-joseki-selection-dialog]");
+  panel2.querySelector("[data-joseki-selection-open]")?.addEventListener("click", () => selectionDialog?.showModal());
+  selectionDialog?.querySelector("[data-joseki-selection-close]")?.addEventListener("click", () => selectionDialog.close());
+  if (selectionDialog && ownedSetups.length > 0 && game.josekiSetup?.phase === "select") {
+    try {
+      if (!selectionDialog.open) selectionDialog.showModal();
+    } catch {
+      selectionDialog.setAttribute("open", "");
+    }
+  }
+  for (const button of panel2.querySelectorAll("[data-joseki-card-id]")) {
     button.addEventListener("pointerenter", () => {
-      if (board && button.dataset.josekiCard) {
-        hoverJosekiCardOnBoard(board, game, button.dataset.josekiCard);
+      if (board && button.dataset.josekiCardId) {
+        hoverJosekiCardOnBoard(board, game, button.dataset.josekiCardId);
       }
     });
     button.addEventListener("pointerleave", () => clearJosekiCardHover(board));
     button.addEventListener("click", async () => {
-      const id = button.dataset.josekiCard;
-      if (!id) return;
+      const id = button.dataset.josekiCardId;
+      if (!id || ownedSetups.length === 0) return;
       const selected = new Set(ownedSetups.flatMap((entry) => entry.selectedCardIds));
       if (selected.has(id)) selected.delete(id);
       else if (selected.size < requiredCount) selected.add(id);
@@ -1738,7 +1748,7 @@ function territoryShadeIndexes(game, boardColors) {
 
 // client/game/render.ts
 function gameViewHtml(context) {
-  const { game, session: session2, boardColors, boardOpacity, canNavigateHistory, visualHistoryIndex, playableHistoryIndex, playableHistoryCount, viewingHistory, passOrDoneDisabled, canUsePlayActions, canResign, showCoordinates: showCoordinates2 } = context;
+  const { game, session: session2, boardColors, boardOpacity, canNavigateHistory, visualHistoryIndex, playableHistoryIndex, playableHistoryCount, viewingHistory, passOrDoneDisabled, canUsePlayActions, canUndo, canResign, showCoordinates: showCoordinates2 } = context;
   const edge = boardEdge(showCoordinates2, game.boardWidth, game.boardHeight);
   const overlay = josekiPlacementOverlay(game, boardColors, boardOpacity);
   return `
@@ -1779,7 +1789,7 @@ function gameViewHtml(context) {
         </div>
         <div class="actions players-panel__actions" ${game.phase === "done" || game.phase === "hidden" || viewingHistory || !game.seats.every((seat) => seat.playerUuid) || (game.phase === "scoring" ? passOrDoneDisabled : !canUsePlayActions) ? "hidden" : ""}>
           <button data-action="${game.phase === "scoring" ? "acceptScore" : "pass"}" ${passOrDoneDisabled ? "disabled" : ""}>${game.phase === "scoring" ? "Done" : "Pass"}</button>
-          <button data-action="cancel" ${!canUsePlayActions ? "disabled" : ""}>Undo</button>
+          <button data-action="cancel" ${!canUndo ? "disabled" : ""}>Undo</button>
           <button data-action="resign" ${!canResign ? "disabled" : ""}>Resign</button>
         </div>
         <div class="players-panel__metadata">${gameInfoHtml(game)}</div>
@@ -1820,15 +1830,25 @@ function josekiSetupHtml(game, session2) {
     const selected = new Set(ownedSetups.flatMap((entry) => entry.selectedCardIds));
     const requiredCount = Math.max(2, ownedSetups.length * 2);
     const seconds = Math.max(0, Math.ceil((setup.selectionDeadlineAt - Date.now()) / 1e3));
+    const canSelect = ownedSetups.length > 0;
+    const pickText = requiredCount === 2 ? "Pick 2 joseki cards" : `Pick ${requiredCount} joseki cards`;
     return `
-      <div class="joseki-setup players-panel__setup">
-        <strong>Select ${requiredCount} joseki</strong>
-        <span>${seconds}s</span>
-        <div class="joseki-setup__cards">
-          ${setup.availableCards.map((card) => `<button data-joseki-card="${card.id}" class="${selected.has(card.id) ? "is-confirmed" : ""}" type="button">${escapeHtml(card.name)}</button>`).join("")}
-        </div>
-        <button data-joseki-selection-confirm type="button" ${selected.size === requiredCount ? "" : "disabled"}>Confirm</button>
+      <div class="joseki-selection-notice players-panel__setup">
+        <strong>${canSelect ? pickText : "Joseki card selection"}</strong>
+        <p class="muted-text">${canSelect ? `${pickText} before play starts. Selection closes in ${seconds}s.` : `Waiting for players to pick joseki cards. Selection closes in ${seconds}s.`}</p>
+        <p>${selected.size} / ${requiredCount} selected</p>
+        <button data-joseki-selection-open type="button" ${canSelect ? "" : "disabled"}>Choose cards</button>
       </div>
+      <dialog class="ui-dialog ui-scroll joseki-selection-dialog" data-joseki-selection-dialog>
+        <button class="dialog-close" data-joseki-selection-close type="button" aria-label="Close">\xD7</button>
+        <h3>${pickText}</h3>
+        <p class="muted-text">Select exactly ${requiredCount} card${requiredCount === 1 ? "" : "s"}. Your selected cards are highlighted.</p>
+        <p>${selected.size} / ${requiredCount} selected \xB7 ${seconds}s remaining</p>
+        ${josekiCardGridHtml(setup.availableCards, selected)}
+        <div class="actions joseki-selection-actions">
+          <button data-joseki-selection-confirm type="button" ${selected.size === requiredCount ? "" : "disabled"}>Confirm selection</button>
+        </div>
+      </dialog>
     `;
   }
   const activeSeatId = setup.placementOrder[setup.placementIndex];
@@ -1983,6 +2003,7 @@ function gameHistoryView(game, session2, historyViewByGame2) {
   const currentSeat = currentActionSeat(game, session2);
   const canUsePlayActions = allSeatsFilled && !viewingHistory && game.phase === "play" && Boolean(currentSeat && !currentSeat.resigned);
   const canAcceptScore = allSeatsFilled && !viewingHistory && game.phase === "scoring" && Boolean(currentActionSeat(game, session2, "scoring"));
+  const canUndo = canUsePlayActions && rawHistory.length >= 2 && rawHistory.at(-2)?.phase === "play";
   const canResign = canUsePlayActions;
   const passOrDoneDisabled = game.phase === "scoring" ? !canAcceptScore : !canUsePlayActions;
   return {
@@ -1998,6 +2019,7 @@ function gameHistoryView(game, session2, historyViewByGame2) {
     playableHistoryIndex,
     canNavigateHistory,
     canUsePlayActions,
+    canUndo,
     canResign,
     passOrDoneDisabled
   };
@@ -2300,12 +2322,15 @@ async function showGame(gameId) {
 function renderGame(game) {
   game = applyLocalName(game);
   const helpWasOpen = document.querySelector(".game-info-dialog")?.open ?? false;
+  const josekiSelectionDialog = document.querySelector("[data-joseki-selection-dialog]");
+  const josekiSelectionWasOpen = josekiSelectionDialog?.open ?? false;
+  const josekiSelectionScrollTop = josekiSelectionDialog?.scrollTop ?? 0;
   maybePlayStoneSound(currentGame, game);
   currentGame = game;
   clearTimeout(gameClockTimer);
   shell.classList.add("game-layout");
   updateGameLayoutMode(shell);
-  const { latestHistoryIndex, historyIndex, viewingHistory, boardColors, boardOpacity, visualHistoryIndex, playableHistoryCount, playableHistoryIndex, canNavigateHistory, canUsePlayActions, canResign, passOrDoneDisabled } = gameHistoryView(game, session, historyViewByGame);
+  const { latestHistoryIndex, historyIndex, viewingHistory, boardColors, boardOpacity, visualHistoryIndex, playableHistoryCount, playableHistoryIndex, canNavigateHistory, canUsePlayActions, canUndo, canResign, passOrDoneDisabled } = gameHistoryView(game, session, historyViewByGame);
   const displayGame = viewingHistory ? {
     ...game,
     phase: "play",
@@ -2324,6 +2349,7 @@ function renderGame(game) {
     viewingHistory,
     passOrDoneDisabled,
     canUsePlayActions,
+    canUndo,
     canResign,
     showCoordinates
   });
@@ -2348,6 +2374,11 @@ function renderGame(game) {
   const activeSeat = game.seats[game.turn];
   statusElement.textContent = game.phase === "done" && game.winnerTeams?.length ? `done \xB7 winner: ${winnerText(game)}` : `${game.phase} \xB7 turn: ${activeSeat?.id ?? "none"}`;
   if (helpWasOpen) panel.querySelector(".game-info-dialog")?.showModal();
+  const nextJosekiSelectionDialog = panel.querySelector("[data-joseki-selection-dialog]");
+  if (josekiSelectionWasOpen && nextJosekiSelectionDialog) {
+    if (!nextJosekiSelectionDialog.open) nextJosekiSelectionDialog.showModal();
+    nextJosekiSelectionDialog.scrollTop = josekiSelectionScrollTop;
+  }
   if (game.phase === "play" && game.clockUpdatedAt !== void 0 && game.config.time?.system && game.config.time.system !== "none") {
     gameClockTimer = setTimeout(() => renderGame(game), 1e3);
   }
