@@ -1105,7 +1105,7 @@ function clearBoardPreview(board) {
 function previewBoardIndexes(board, game, event, showCoordinates2 = true) {
   const point = placementPointFromEvent(board, game, event, showCoordinates2);
   if (!point) return [];
-  const points = game.config.variants?.pixel ? [
+  const points = shouldUsePixelPlacement(game) ? [
     point,
     {
       x: point.x + 1,
@@ -1126,7 +1126,7 @@ function previewBoardIndexes(board, game, event, showCoordinates2 = true) {
 }
 function placementPointFromEvent(board, game, event, showCoordinates2 = true) {
   const { gx, gy } = boardGridCoords(board, game, event, showCoordinates2);
-  if (game.config.variants?.pixel) {
+  if (shouldUsePixelPlacement(game)) {
     const point2 = {
       x: Math.floor(gx),
       y: Math.floor(gy)
@@ -1157,6 +1157,9 @@ function placementPointFromEvent(board, game, event, showCoordinates2 = true) {
   }
   if (game.board[point.y * game.boardWidth + point.x] === -1) return void 0;
   return point;
+}
+function shouldUsePixelPlacement(game) {
+  return Boolean(game.config.variants?.pixel && game.phase !== "scoring");
 }
 function boardGridCoords(board, game, event, showCoordinates2 = true) {
   const rect = board.getBoundingClientRect();
@@ -1718,9 +1721,20 @@ function playerSeatHtml(game, seat, index, session2) {
       <div class="seat-player"><i class="turn-marker">${active}</i>${activeStoneHtml(game, index)}<i class="color-dot" data-team="${seatDisplayTeam(game, seat)}" style="--stone-color: ${stoneColor(game, seat.team)}"></i>${player}</div>
       ${action}
       <div class="seat-time">${seatMetaHtml(game, seat)}</div>
-      <div class="seat-points">${game.points[seat.team - 1] ?? 0} pts</div>
+      <div class="seat-points">${formatSeatPoints(displaySeatPoints(game, seat))} pts</div>
     </div>
   `;
+}
+function displaySeatPoints(game, seat) {
+  const score = game.points[seat.team - 1] ?? 0;
+  if (game.phase === "scoring" || game.phase === "done") return score;
+  if (game.config.variants?.colorGo) {
+    return score + (game.config.variants.colorGoKomi?.[seat.team - 1] ?? 0);
+  }
+  return seat.team === 2 ? score + (game.config.komi ?? 0) : score;
+}
+function formatSeatPoints(points) {
+  return Number.isInteger(points) ? String(points) : String(Number(points.toFixed(2)));
 }
 
 // client/game/territory.ts
