@@ -28,7 +28,12 @@ export type TimeConfig = {
 export type GameConfig = {
   boardSize: number;
   name?: string;
-  customGoban?: { width: number; height: number; points: number[] };
+  customGoban?: {
+    width: number;
+    height: number;
+    points: number[];
+    starPoints?: Array<{ x: number; y: number }>;
+  };
   ruleset: "area" | "territory" | "chinese" | "aga" | "japanese";
   komi?: number;
   handicap?: number;
@@ -56,6 +61,9 @@ export type GameConfig = {
     traitor: boolean;
     traitorStoneCount?: number;
     showTraitorCounter?: boolean;
+    randomTurn?: boolean;
+    teamGo?: boolean;
+    teamGoSeatCounts?: number[];
   };
 };
 
@@ -145,7 +153,9 @@ export class GameStore {
       : normalized.variants.zen
       ? normalized.variants.zenPlayerCount ?? 3
       : undefined;
-    const seats = playerCount
+    const seats = normalized.variants.teamGo
+      ? teamGoSeats(normalized.variants.teamGoSeatCounts ?? [2, 2])
+      : playerCount
       ? Array.from({ length: playerCount }, (_, index) => ({
         id: `player-${index + 1}`,
         team: index + 1,
@@ -894,8 +904,14 @@ function markTimedOut(record: GameRecord, now: number): boolean {
   applyTeamClockElapsed(state, state.turn, record.config, elapsed);
   for (const seat of state.seats) if (seat.team === activeSeat.team) seat.resigned = true;
   state.phase = "done";
+  state.play.winnerTeams = remainingWinnerTeams(state.seats);
   state.clockUpdatedAt = undefined;
   return true;
+}
+
+function remainingWinnerTeams(seats: Seat[]): number[] {
+  const activeTeams = [...new Set(seats.filter((seat) => !seat.resigned).map((seat) => seat.team))];
+  return activeTeams.length === 1 ? activeTeams : [];
 }
 
 function clockSecondsUntilLoss(seat: Seat, time: TimeConfig): number {
@@ -1040,11 +1056,34 @@ function defaultGameName(id: string): string {
 
 function creatorSeatIndex(creatorSeat: string | undefined, seats: Seat[]): number {
   if (creatorSeat === "white" && seats[1]) return 1;
+  if (creatorSeat?.startsWith("team-")) {
+    const index = seats.findIndex((seat) => seat.id === creatorSeat);
+    if (index >= 0) return index;
+  }
   if (creatorSeat?.startsWith("player-")) {
     const index = seats.findIndex((seat) => seat.id === creatorSeat);
     if (index >= 0) return index;
   }
   return 0;
+}
+
+function teamGoSeats(seatCounts: number[]): Seat[] {
+  const counts = seatCounts.map((count) => Math.max(0, Math.trunc(count))).filter((count) =>
+    count > 0
+  );
+  const seats: Seat[] = [];
+  const maxSeats = Math.max(...counts);
+  for (let seatNumber = 1; seatNumber <= maxSeats; seatNumber++) {
+    for (let teamIndex = 0; teamIndex < counts.length; teamIndex++) {
+      if (seatNumber > counts[teamIndex]) continue;
+      seats.push({
+        id: `team-${teamIndex + 1}-${seatNumber}`,
+        team: teamIndex + 1,
+        resigned: false,
+      });
+    }
+  }
+  return seats;
 }
 
 export const gameStore = new GameStore();

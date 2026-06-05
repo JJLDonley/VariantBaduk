@@ -28,7 +28,7 @@ export function previewBoardIndexes(
 ): number[] {
   const point = placementPointFromEvent(board, game, event, showCoordinates);
   if (!point) return [];
-  const points = game.config.variants?.pixel
+  const points = shouldUsePixelPlacement(game)
     ? [point, { x: point.x + 1, y: point.y }, { x: point.x, y: point.y + 1 }, {
       x: point.x + 1,
       y: point.y + 1,
@@ -49,7 +49,7 @@ export function placementPointFromEvent(
   showCoordinates = true,
 ): { x: number; y: number } | undefined {
   const { gx, gy } = boardGridCoords(board, game, event, showCoordinates);
-  if (game.config.variants?.pixel) {
+  if (shouldUsePixelPlacement(game)) {
     const point = { x: Math.floor(gx), y: Math.floor(gy) };
     const hasBoardPoint = [
       point,
@@ -70,6 +70,10 @@ export function placementPointFromEvent(
   }
   if (game.board[point.y * game.boardWidth + point.x] === -1) return undefined;
   return point;
+}
+
+function shouldUsePixelPlacement(game: Game): boolean {
+  return Boolean(game.config.variants?.pixel && game.phase !== "scoring");
 }
 
 function boardGridCoords(
@@ -141,7 +145,7 @@ export function boardGridHtml(game: Game, showCoordinates = true): string {
 }
 
 export function starPointsHtml(game: Game, showCoordinates = true): string {
-  const coords = starPointCoords(game.boardWidth, game.boardHeight)
+  const coords = starPointCoords(game)
     .filter(({ x, y }) => isPlayableIntersection(game, x, y));
   const edge = boardEdge(showCoordinates, game.boardWidth, game.boardHeight);
   return coords.map(({ x, y }) => {

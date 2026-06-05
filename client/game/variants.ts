@@ -3,7 +3,7 @@ import type { Game } from "../types/domain.ts";
 type VariantRule = { label: string; rule: string; html?: string };
 
 const ALL_VARIANT_RULES: VariantRule[] = [
-  { label: "CGoban", rule: "Custom board shapes can remove points from the goban." },
+  { label: "Custom", rule: "Custom board shapes can remove points from the goban." },
   { label: "Captures are points", rule: "Captures add points immediately." },
   { label: "Ponnuki points", rule: "Single-stone captures can award extra points." },
   { label: "Pixel", rule: "Each move places a 2×2 block where possible." },
@@ -28,6 +28,14 @@ const ALL_VARIANT_RULES: VariantRule[] = [
     rule: "A move is illegal only if it creates a connected group of exactly 4 stones.",
   },
   { label: "N+1", rule: "Making exactly N stones in a row grants an extra turn." },
+  {
+    label: "Random Turn",
+    rule: "After each turn, one active player is chosen randomly to play next.",
+  },
+  {
+    label: "Team Go",
+    rule: "Each color can have multiple seats; turns rotate by color team and then seat.",
+  },
   {
     label: "Traitor",
     rule: "Some stones may play as another color instead of the player's normal color.",
@@ -90,11 +98,11 @@ function activeVariantRules(game: Game): VariantRule[] {
   if (game.config.customGoban) {
     const rule = "This game uses a custom board shape.";
     rules.push({
-      label: "CGoban",
+      label: "Custom",
       rule,
       html: `<button class="variant-button variant-meta-button" data-cgoban-preview title="${
         escapeAttr(rule)
-      }" type="button">CGoban</button>`,
+      }" type="button">Custom</button>`,
     });
   }
   if (variants.capturesGivePoints) {
@@ -153,6 +161,18 @@ function activeVariantRules(game: Game): VariantRule[] {
     rules.push({
       label: `N+1 extra turn (${variants.nPlusOneCount ?? 1})`,
       rule: `Making exactly ${variants.nPlusOneCount ?? 1} in a row grants an extra turn.`,
+    });
+  }
+  if (variants.teamGo) {
+    rules.push({
+      label: "Team Go",
+      rule: `Team seats: ${(variants.teamGoSeatCounts ?? []).join(" / ")}`,
+    });
+  }
+  if (variants.randomTurn) {
+    rules.push({
+      label: "Random Turn",
+      rule: "After each turn, one active player is chosen randomly to play next.",
     });
   }
   if (variants.traitor) {

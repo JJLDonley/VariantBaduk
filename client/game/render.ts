@@ -4,11 +4,11 @@ import { boardEdge, boardStep, pointLabel, pointPosition } from "./board-utils.t
 import {
   gameInfoHtml,
   placementPreviewTeam,
+  resultText,
   scoringHelpHtml,
   stoneColor,
-  viewersHtml,
 } from "./display.ts";
-import { teamSeatsHtml } from "./seats-render.ts";
+import { teamSeatsHtml, usersColumnHtml } from "./seats-render.ts";
 import { territoryShadeHtml } from "./territory.ts";
 import { variantRulesHelpHtml } from "./variants.ts";
 import { josekiPlacementOverlay } from "./joseki-placement.ts";
@@ -51,6 +51,7 @@ export function gameViewHtml(context: GameViewContext): string {
   } = context;
   const edge = boardEdge(showCoordinates, game.boardWidth, game.boardHeight);
   const overlay = josekiPlacementOverlay(game, boardColors, boardOpacity);
+  const result = resultText(game);
   return `
     <div class="game-title-row">
       <h2>${escapeHtml(game.config.name || `Game #${game.id}`)}</h2>
@@ -66,7 +67,7 @@ export function gameViewHtml(context: GameViewContext): string {
     </dialog>
     <div class="game-view">
       <section class="board-panel" aria-label="Board">
-        <div class="board" data-preview-team="${
+        <div class="board ${result ? "has-result" : ""}" data-preview-team="${
     placementPreviewTeam(game)
   }" data-coordinates="${showCoordinates}" style="--board-step: ${
     boardStep(game.boardWidth, edge)
@@ -75,6 +76,9 @@ export function gameViewHtml(context: GameViewContext): string {
           ${starPointsHtml(game, showCoordinates)}
           ${territoryShadeHtml(game, overlay.colors, edge)}
           ${boardPointsHtml(game, overlay.colors, overlay.opacity, edge)}
+          ${
+    result ? `<div class="game-result-overlay" aria-live="polite">${escapeHtml(result)}</div>` : ""
+  }
         </div>
       </section>
       <section class="players-panel ui-stack" aria-label="Players and seats">
@@ -119,7 +123,7 @@ export function gameViewHtml(context: GameViewContext): string {
         <h3>Users</h3>
         <div class="user-list">
           <h4>Users</h4>
-          ${viewersHtml(game)}
+          ${usersColumnHtml(game)}
         </div>
       </section>
     </div>

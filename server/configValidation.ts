@@ -24,8 +24,8 @@ export const DEFAULT_CONFIG: GameConfig = {
     zenPlayerCount: 3,
     colorGo: false,
     colorGoPlayerCount: 3,
-    colorGoColors: ["#111111", "#eeeeee", "#6c8cff", "#e07a5f"],
-    colorGoKomi: [0, 7.5, 0, 0],
+    colorGoColors: ["#111111", "#eeeeee", "#4f9d69", "#e07a5f"],
+    colorGoKomi: [0, 3.5, 5.5, 7.5],
     phantomMove: false,
     phantomHideViewers: false,
     hiddenMove: false,
@@ -38,6 +38,9 @@ export const DEFAULT_CONFIG: GameConfig = {
     traitor: false,
     traitorStoneCount: 6,
     showTraitorCounter: false,
+    randomTurn: false,
+    teamGo: false,
+    teamGoSeatCounts: [2, 2],
   },
 };
 
@@ -59,6 +62,8 @@ export function normalizeConfig(config: Partial<GameConfig>): GameConfig {
       capturesGivePoints: Boolean(config.variants?.capturesGivePoints),
       nPlusOne: Boolean(config.variants?.nPlusOne),
       traitor: Boolean(config.variants?.traitor),
+      randomTurn: Boolean(config.variants?.randomTurn),
+      teamGo: Boolean(config.variants?.teamGo),
     },
   };
 
@@ -99,6 +104,13 @@ export function normalizeConfig(config: Partial<GameConfig>): GameConfig {
       normalized.variants.colorGoPlayerCount,
     );
   }
+  if (config.variants?.teamGo) {
+    normalized.variants.teamGo = true;
+    normalized.variants.teamGoSeatCounts = normalizeTeamGoSeatCounts(
+      config.variants?.teamGoSeatCounts,
+      normalized.variants.colorGo ? normalized.variants.colorGoPlayerCount ?? 2 : 2,
+    );
+  }
   if (config.variants?.hiddenMove) {
     normalized.variants.hiddenMove = true;
     normalized.variants.hiddenMoveCount = boundedInteger(config.variants?.hiddenMoveCount, 1, 20);
@@ -133,13 +145,16 @@ export function validateGameConfig(config: GameConfigInput): string[] {
     variants?.josekiCard &&
     (variants.zen || variants.colorGo || variants.tetris || config.customGoban)
   ) {
-    messages.push("Joseki Card cannot be combined with CGoban, Tetris, Zen, or Color Go.");
+    messages.push("Joseki Card cannot be combined with Custom board, Tetris, Zen, or Color Go.");
   }
   if (variants?.hiddenMove && variants.zen) {
     messages.push("Hidden cannot be combined with Zen.");
   }
   if (variants?.zen && variants.colorGo) {
     messages.push("Zen cannot be combined with Color Go.");
+  }
+  if (variants?.teamGo && variants.zen) {
+    messages.push("Team Go cannot be combined with Zen.");
   }
   if (variants?.tetris) {
     if (variants.pixel) messages.push("Tetris cannot be combined with Pixel.");
@@ -165,7 +180,27 @@ function normalizeCustomGoban(
   if (points.length !== width * height) return undefined;
   const normalized = points.map((point) => point === -1 ? -1 : 0);
   if (normalized.every((point) => point === -1)) return undefined;
-  return { width, height, points: normalized };
+  const embeddedStarPoints = points.flatMap((point, index) =>
+    point === 1 ? [{ x: index % width, y: Math.floor(index / width) }] : []
+  );
+  const explicitStarPoints = Array.isArray(custom.starPoints)
+    ? custom.starPoints.filter((point) =>
+      Number.isInteger(point?.x) && Number.isInteger(point?.y) && point.x >= 0 && point.y >= 0 &&
+      point.x < width && point.y < height && normalized[point.y * width + point.x] !== -1
+    ).map((point) => ({ x: point.x, y: point.y }))
+    : [];
+  const starPoints = uniquePoints([...explicitStarPoints, ...embeddedStarPoints]);
+  return { width, height, points: normalized, ...(starPoints.length ? { starPoints } : {}) };
+}
+
+function uniquePoints(points: Array<{ x: number; y: number }>): Array<{ x: number; y: number }> {
+  const seen = new Set<string>();
+  return points.filter((point) => {
+    const key = `${point.x},${point.y}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function normalizeRuleset(ruleset: unknown): GameConfig["ruleset"] {
@@ -208,6 +243,7 @@ function oddPlayerCount(value: unknown): number {
 function normalizeCreatorSeat(value: unknown): string {
   if (value === "black" || value === "white" || value === "none") return value;
   if (typeof value === "string" && /^player-\d+$/.test(value)) return value;
+  if (typeof value === "string" && /^team-\d+-\d+$/.test(value)) return value;
   return DEFAULT_CONFIG.creatorSeat ?? "black";
 }
 
@@ -221,13 +257,30 @@ function normalizeColors(colors: unknown, count: number): string[] {
   });
 }
 
+function normalizeTeamGoSeatCounts(counts: unknown, teamCount: number): number[] {
+  const defaults = DEFAULT_CONFIG.variants.teamGoSeatCounts ?? [2, 2];
+  const values = Array.isArray(counts) ? counts : defaults;
+  const normalized = Array.from(
+    { length: teamCount },
+    (_, index) => boundedInteger(values[index] ?? defaults[index] ?? 0, 0, 9),
+  );
+  if (normalized.filter((count) => count > 0).length < 2) return [2, 2];
+  return normalized;
+}
+
 function normalizeColorGoKomi(komi: unknown, count: number): number[] {
-  const defaults = DEFAULT_CONFIG.variants.colorGoKomi ?? [];
+  const defaults = defaultColorGoKomi(count);
   return Array.from({ length: count }, (_, index) =>
     finiteNumber(
       Array.isArray(komi) ? komi[index] : undefined,
       defaults[index] ?? 0,
     ));
+}
+
+function defaultColorGoKomi(count: number): number[] {
+  if (count >= 4) return [0, 3.5, 5.5, 7.5];
+  if (count === 3) return [0, 5.5, 7.5];
+  return [0, 7.5];
 }
 
 function boundedInteger(value: unknown, min: number, max: number): number {

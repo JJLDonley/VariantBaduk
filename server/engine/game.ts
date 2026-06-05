@@ -175,6 +175,7 @@ function place(
     state,
     shouldKeepTurnForFreeHandicap(state, mods) ||
       shouldKeepTurn(state, board, emptyPoints, color, mods),
+    mods,
   );
   pushHistory(state, board, "place");
   return { ok: true, state };
@@ -188,7 +189,7 @@ function pass(state: SharedState, board: Board, mods: RuleMods): MakeActionResul
     }
   });
   state.play.extraTurnsRemaining = 0;
-  advanceTurn(state, false);
+  advanceTurn(state, false, mods);
 
   const allDone = state.seats.every((seat, index) =>
     seat.resigned || state.play.playersPassed[index]
@@ -212,9 +213,10 @@ function resign(state: SharedState, board: Board, mods: RuleMods): MakeActionRes
   const activeSeats = state.seats.filter((seat) => !seat.resigned);
   if (activeSeats.length === 0 || (!mods.colorGo && activeSeats.length <= 1)) {
     state.phase = "done";
+    state.play.winnerTeams = [...new Set(activeSeats.map((seat) => seat.team))];
   } else {
     state.play.extraTurnsRemaining = 0;
-    advanceTurn(state, false);
+    advanceTurn(state, false, mods);
   }
   pushHistory(state, board, "resign");
   return { ok: true, state };

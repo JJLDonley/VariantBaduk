@@ -1,5 +1,37 @@
 type SeatOption = { value: string; label: string };
 
+export function selectBoardSizeOption(event: Event): void {
+  const button = (event.currentTarget as HTMLElement | null)?.closest<HTMLElement>(
+    "[data-board-size-option]",
+  );
+  const option = button?.dataset.boardSizeOption;
+  const boardSize = document.querySelector<HTMLInputElement>("[name='boardSize']");
+  const customGoban = document.querySelector<HTMLInputElement>("[name='customGobanMode']");
+  if (!option || !boardSize || !customGoban) return;
+  if (option === "cgoban") {
+    customGoban.checked = true;
+  } else {
+    boardSize.value = option;
+    customGoban.checked = false;
+  }
+  updateBoardSizeButtons();
+  updateVariantOptions();
+}
+
+export function updateBoardSizeButtons(): void {
+  const boardSize = document.querySelector<HTMLInputElement>("[name='boardSize']");
+  const customGoban = document.querySelector<HTMLInputElement>("[name='customGobanMode']");
+  const selected = customGoban?.checked ? "cgoban" : boardSize?.value;
+  for (const button of document.querySelectorAll<HTMLButtonElement>("[data-board-size-option]")) {
+    const active = button.dataset.boardSizeOption === selected;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+    if (button.dataset.boardSizeOption === "cgoban") {
+      button.disabled = Boolean(customGoban?.disabled);
+    }
+  }
+}
+
 export function cycleCreatorSeat(event: Event): void {
   const input = document.querySelector<HTMLInputElement>("[name='creatorSeat']");
   if (!input) return;
@@ -24,6 +56,8 @@ export function updateCreatorSeatOptions(): void {
 function creatorSeatOptions(): SeatOption[] {
   const color = document.querySelector<HTMLInputElement>("[name='colorGo']")?.checked;
   const zen = document.querySelector<HTMLInputElement>("[name='zen']")?.checked;
+  const teamGo = document.querySelector<HTMLInputElement>("[name='teamGo']")?.checked;
+  if (teamGo) return teamGoSeatOptions();
   if (color) {
     const count = Number(
       document.querySelector<HTMLInputElement>("[name='colorGoPlayerCount']")?.value ?? 3,
@@ -43,6 +77,24 @@ function creatorSeatOptions(): SeatOption[] {
   ];
 }
 
+function teamGoSeatOptions(): SeatOption[] {
+  const colorGoEnabled = document.querySelector<HTMLInputElement>("[name='colorGo']")?.checked;
+  const teamCount = colorGoEnabled
+    ? Number(document.querySelector<HTMLInputElement>("[name='colorGoPlayerCount']")?.value ?? 3)
+    : 2;
+  const labels = ["Black", "White", "Green", "Red"].slice(0, teamCount);
+  const options = labels.flatMap((label, teamIndex) => {
+    const count = Number(
+      document.querySelector<HTMLInputElement>(`[name='teamGoSeats${teamIndex + 1}']`)?.value ?? 0,
+    );
+    return Array.from({ length: Math.max(0, count) }, (_, seatIndex) => ({
+      value: `team-${teamIndex + 1}-${seatIndex + 1}`,
+      label: `${label} ${seatIndex + 1}`,
+    }));
+  });
+  return [...options, { value: "none", label: "None" }];
+}
+
 function multiplayerSeatOptions(count: number): SeatOption[] {
   return [
     ...Array.from(
@@ -51,6 +103,17 @@ function multiplayerSeatOptions(count: number): SeatOption[] {
     ),
     { value: "none", label: "None" },
   ];
+}
+
+export function updateColorGoKomiDefaults(): void {
+  const count = Number(
+    document.querySelector<HTMLInputElement>("[name='colorGoPlayerCount']")?.value ?? 2,
+  );
+  const defaults = count >= 4 ? [0, 3.5, 5.5, 7.5] : count === 3 ? [0, 5.5, 7.5] : [0, 7.5];
+  for (let team = 2; team <= 4; team++) {
+    const input = document.querySelector<HTMLInputElement>(`[name='colorGoKomi${team}']`);
+    if (input) input.value = String(defaults[team - 1] ?? 0);
+  }
 }
 
 export function updateTimeOptions(): void {
@@ -75,13 +138,42 @@ export function updateRuleDefaults(): void {
 
 export function updateVariantOptions(): void {
   updateVariantConflicts();
-  const colorGoCount = Number(
-    document.querySelector<HTMLInputElement>("[name='colorGoPlayerCount']")?.value ?? 3,
-  );
+  updateBoardSizeButtons();
+  const colorGoEnabled = document.querySelector<HTMLInputElement>("[name='colorGo']")?.checked;
+  const teamGoEnabled = document.querySelector<HTMLInputElement>("[name='teamGo']")?.checked;
+  const colorGoCount = colorGoEnabled
+    ? Number(document.querySelector<HTMLInputElement>("[name='colorGoPlayerCount']")?.value ?? 3)
+    : 2;
+  for (const setup of document.querySelectorAll<HTMLElement>("[data-team-setup-options]")) {
+    setup.hidden = !colorGoEnabled && !teamGoEnabled;
+  }
+  for (const control of document.querySelectorAll<HTMLElement>("[data-color-go-control]")) {
+    control.hidden = !colorGoEnabled;
+  }
+  for (const input of document.querySelectorAll<HTMLElement>("[data-team-go-seat]")) {
+    input.hidden = !teamGoEnabled;
+  }
+  for (const label of document.querySelectorAll<HTMLElement>("[data-team-go-seat-label]")) {
+    label.hidden = !teamGoEnabled;
+  }
   for (const option of document.querySelectorAll<HTMLElement>("[data-color-go-player]")) {
     const hidden = Number(option.dataset.colorGoPlayer) > colorGoCount;
     option.hidden = hidden;
     option.style.display = hidden ? "none" : "";
+  }
+  const nPlusOneEnabled = document.querySelector<HTMLInputElement>("[name='nPlusOne']")?.checked;
+  const hiddenEnabled = document.querySelector<HTMLInputElement>("[name='hiddenMove']")?.checked;
+  const traitorEnabled = document.querySelector<HTMLInputElement>("[name='traitor']")?.checked;
+  const phantomEnabled = document.querySelector<HTMLInputElement>("[name='phantomMove']")?.checked;
+  for (const group of document.querySelectorAll<HTMLElement>("[data-variant-count-group]")) {
+    group.hidden = !nPlusOneEnabled && !hiddenEnabled && !traitorEnabled;
+  }
+  const invisibleStonesEnabled = Boolean(phantomEnabled || hiddenEnabled);
+  for (const control of document.querySelectorAll<HTMLElement>("[data-invisible-stones-control]")) {
+    control.hidden = !invisibleStonesEnabled;
+    for (const input of control.querySelectorAll<HTMLInputElement>("input")) {
+      input.disabled = !invisibleStonesEnabled;
+    }
   }
   const scroller = document.querySelector<HTMLElement>(".panel-card");
   const scrollTop = scroller?.scrollTop ?? 0;
@@ -89,7 +181,9 @@ export function updateVariantOptions(): void {
     const input = document.querySelector<HTMLInputElement>(
       `[name='${option.dataset.variantOption}']`,
     );
-    option.hidden = !input?.checked;
+    const hidden = !input?.checked;
+    option.hidden = hidden;
+    option.style.display = hidden ? "none" : "";
   }
   const divider = document.querySelector<HTMLElement>("[data-variant-options-divider]");
   if (divider) divider.hidden = false;
@@ -107,10 +201,13 @@ export function invalidVariantComboMessage(data: FormData): string {
     data.has("josekiCard") &&
     (data.has("customGobanMode") || data.has("tetris") || data.has("zen") || data.has("colorGo"))
   ) {
-    return "Joseki Card cannot be combined with CGoban, Tetris, Zen, or Color Go.";
+    return "Joseki Card cannot be combined with Custom board, Tetris, Zen, or Color Go.";
   }
   if (data.has("hiddenMove") && data.has("zen")) return "Hidden cannot be combined with Zen.";
   if (data.has("zen") && data.has("colorGo")) return "Zen cannot be combined with Color Go.";
+  if (data.has("teamGo") && data.has("zen")) {
+    return "Team Go cannot be combined with Zen.";
+  }
   if (data.has("tetris") && data.has("pixel")) return "Tetris cannot be combined with Pixel.";
   if (data.has("tetris") && data.has("nPlusOne") && Number(data.get("nPlusOneCount")) === 4) {
     return "Tetris cannot be combined with N+1 count 4.";
@@ -119,22 +216,24 @@ export function invalidVariantComboMessage(data: FormData): string {
 }
 
 function updateVariantConflicts(): void {
-  const boardSize = document.querySelector<HTMLSelectElement>("[name='boardSize']");
+  const boardSize = document.querySelector<HTMLInputElement>("[name='boardSize']");
   const josekiCard = document.querySelector<HTMLInputElement>("[name='josekiCard']");
   const customGoban = document.querySelector<HTMLInputElement>("[name='customGobanMode']");
   const tetris = document.querySelector<HTMLInputElement>("[name='tetris']");
   const pixel = document.querySelector<HTMLInputElement>("[name='pixel']");
   const zen = document.querySelector<HTMLInputElement>("[name='zen']");
   const colorGo = document.querySelector<HTMLInputElement>("[name='colorGo']");
+  const teamGo = document.querySelector<HTMLInputElement>("[name='teamGo']");
   const hiddenMove = document.querySelector<HTMLInputElement>("[name='hiddenMove']");
   const nPlusOne = document.querySelector<HTMLInputElement>("[name='nPlusOne']");
   const nPlusOneCount = document.querySelector<HTMLInputElement>("[name='nPlusOneCount']");
   if (
     !boardSize || !josekiCard || !customGoban || !tetris || !pixel || !zen || !colorGo ||
-    !hiddenMove || !nPlusOne || !nPlusOneCount
+    !teamGo || !hiddenMove || !nPlusOne || !nPlusOneCount
   ) return;
   resolveExclusivePair(tetris, pixel);
   resolveExclusivePair(zen, colorGo);
+  resolveExclusivePair(zen, teamGo);
   resolveExclusivePair(zen, hiddenMove);
   if (josekiCard.checked) {
     boardSize.value = "19";
@@ -150,8 +249,12 @@ function updateVariantConflicts(): void {
   setVariantDisabled(customGoban, josekiCard.checked);
   setVariantDisabled(tetris, pixel.checked || tetrisBlockedByNPlusOne || josekiCard.checked);
   setVariantDisabled(colorGo, zen.checked || josekiCard.checked);
+  setVariantDisabled(teamGo, zen.checked);
   setVariantDisabled(hiddenMove, zen.checked);
-  setVariantDisabled(zen, colorGo.checked || hiddenMove.checked || josekiCard.checked);
+  setVariantDisabled(
+    zen,
+    colorGo.checked || teamGo.checked || hiddenMove.checked || josekiCard.checked,
+  );
   setVariantDisabled(
     josekiCard,
     customGoban.checked || tetris.checked || zen.checked || colorGo.checked,

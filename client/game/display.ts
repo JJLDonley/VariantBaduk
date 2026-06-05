@@ -17,6 +17,45 @@ export function winnerText(game: Game): string {
   return names.length > 1 ? `Tie: ${names.join(", ")}` : names[0];
 }
 
+export function resultText(game: Game): string {
+  const winners = winningTeams(game);
+  if (game.phase !== "done" || winners.length === 0) return "";
+  if (winners.length > 1) return winnerText({ ...game, winnerTeams: winners });
+
+  const winnerTeam = winners[0];
+  const prefix = teamResultPrefix(winnerTeam);
+  const lastAction = game.history?.at(-1)?.action;
+  const wonByResignation = lastAction === "resign" ||
+    game.seats.some((seat) => seat.resigned && seat.team !== winnerTeam);
+  if (wonByResignation) return `${prefix}+R`;
+
+  const winnerScore = game.points?.[winnerTeam - 1];
+  const nextBestScore = Math.max(
+    ...game.points.map((score, index) => index + 1 === winnerTeam ? -Infinity : score),
+  );
+  const margin = winnerScore - nextBestScore;
+  return Number.isFinite(margin) ? `${prefix}+${formatPoints(margin)}` : prefix;
+}
+
+function teamResultPrefix(team: number): string {
+  if (team === 1) return "B";
+  if (team === 2) return "W";
+  return `T${team}`;
+}
+
+function winningTeams(game: Game): number[] {
+  if (game.winnerTeams?.length) return game.winnerTeams;
+  if (game.phase !== "done") return [];
+  const activeTeams = [
+    ...new Set(game.seats.filter((seat) => !seat.resigned).map((seat) => seat.team)),
+  ];
+  return activeTeams.length === 1 ? activeTeams : [];
+}
+
+function formatPoints(points: number): string {
+  return Number.isInteger(points) ? String(points) : points.toFixed(1);
+}
+
 export function scoringHelpHtml(): string {
   return `
     <div class="scoring-help">
@@ -56,7 +95,8 @@ export function seatDisplayTeam(game: Game, seat: Seat): number {
 export function stoneColor(game: Game, team: number): string {
   const color = game.config.variants?.colorGoColors?.[team - 1];
   if (color) return color;
-  return team === 1 ? "#080808" : team === 2 ? "#eeeeee" : "#777777";
+  const defaults = ["#080808", "#eeeeee", "#4f9d69", "#e07a5f", "#6c8cff"];
+  return defaults[team - 1] ?? "#777777";
 }
 
 export function placementPreviewTeam(game: Game): number {
@@ -65,9 +105,11 @@ export function placementPreviewTeam(game: Game): number {
 }
 
 export function seatMetaHtml(game: Game, seat: Seat): string {
-  if (game.phase === "done" && game.winnerTeams?.includes(seat.team)) return "Winner!";
-  const lines = [seatClockText(game, seat)];
-  if (game.config.variants?.traitor && game.config.variants?.showTraitorCounter) {
+  if (game.phase === "done" && winningTeams(game).includes(seat.team)) return "Winner!";
+  const clockText = seatClockText(game, seat);
+  if (game.phase === "done" && winningTeams(game).includes(seat.team)) return "Winner!";
+  const lines = [clockText];
+  if (game.config.variants?.traitor) {
     const used = game.traitorStonesPlaced?.[seat.team - 1] ?? 0;
     const total = game.config.variants.traitorStoneCount ?? 6;
     lines.push(`TG: ${Math.max(0, total - used)}`);
@@ -126,6 +168,7 @@ function currentSeatTime(game: Game, seat: Seat): Record<string, number> {
     game.phase = "done";
     game.clockUpdatedAt = undefined;
     seat.resigned = true;
+    game.winnerTeams = winningTeams(game);
     return display;
   }
 

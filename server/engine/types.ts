@@ -139,6 +139,8 @@ export type RuleMods = {
   nPlusOneCount?: number;
   traitor?: boolean;
   traitorStoneCount?: number;
+  randomTurn?: boolean;
+  teamGo?: boolean;
   random?: () => number;
   ponnukiPointValue?: number;
   pixel?: boolean;

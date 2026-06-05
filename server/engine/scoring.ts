@@ -39,6 +39,7 @@ export function winnerTeams(points: number[]): number[] {
 }
 
 export function scoreBoard(state: SharedState, board: Board, mods: RuleMods): number[] {
+  // Score virtually: dead stones remain visible in the UI, but are removed before counting.
   const scoringBoard = withoutDeadStones(state, board);
   const teamCount = Math.max(...state.seats.map((seat) => seat.team));
   const scores = Array.from(
@@ -64,8 +65,7 @@ export function scoreBoard(state: SharedState, board: Board, mods: RuleMods): nu
     const [team] = territory.borderingTeams;
     const scoringPoints = territory.points.filter((point) => {
       const index = pointIndex(state, point);
-      if (state.play.noScorePoints?.[index]) return false;
-      return mods.scoring === "territory" || !state.play.deadStones?.[index];
+      return !state.play.noScorePoints?.[index];
     });
     scores[team - 1] += scoringPoints.length;
     if (mods.scoring === "territory") {

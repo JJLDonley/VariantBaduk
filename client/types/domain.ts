@@ -27,6 +27,7 @@ export type CustomGoban = {
   width: number;
   height: number;
   points: number[];
+  starPoints?: Array<{ x: number; y: number }>;
 };
 
 export type JosekiStone = {
@@ -64,6 +65,9 @@ export type GameVariants = {
   traitor?: boolean;
   traitorStoneCount?: number;
   showTraitorCounter?: boolean;
+  randomTurn?: boolean;
+  teamGo?: boolean;
+  teamGoSeatCounts?: number[];
 };
 
 export type GameConfig = {

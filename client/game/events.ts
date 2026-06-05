@@ -311,7 +311,11 @@ function bindHistoryButtons(
 function bindSeats(
   { panel, game, statusElement, renderGameList, showGame }: BindGameEventsOptions,
 ): void {
-  for (const button of panel.querySelectorAll<HTMLElement>(".seat[data-open='true']")) {
+  for (
+    const button of panel.querySelectorAll<HTMLElement>(
+      ".seat[data-open='true'], .team-seat-player[data-open='true']",
+    )
+  ) {
     const handleJoinSeat = async (event: Event) => {
       if ((event.target as Element | null)?.closest(".seat-action")) return;
       const seatId = button.dataset.seatId;

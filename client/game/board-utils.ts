@@ -2,6 +2,11 @@ type BoardLike = {
   boardWidth: number;
   boardHeight: number;
   board: number[];
+  config?: {
+    customGoban?: {
+      starPoints?: Array<{ x: number; y: number }>;
+    };
+  };
 };
 
 export function neighborIndexes(index: number, width: number, height: number): number[] {
@@ -20,7 +25,12 @@ export function isPlayableIntersection(game: BoardLike, x: number, y: number): b
     game.board[y * game.boardWidth + x] !== -1;
 }
 
-export function starPointCoords(width: number, height: number): Array<{ x: number; y: number }> {
+export function starPointCoords(game: BoardLike): Array<{ x: number; y: number }> {
+  const customStarPoints = game.config?.customGoban?.starPoints;
+  if (customStarPoints?.length) {
+    return customStarPoints.filter(({ x, y }) => isPlayableIntersection(game, x, y));
+  }
+  const { boardWidth: width, boardHeight: height } = game;
   if (width !== height) return [];
   if (width === 9) {
     return [{ x: 2, y: 2 }, { x: 6, y: 2 }, { x: 4, y: 4 }, { x: 2, y: 6 }, { x: 6, y: 6 }];

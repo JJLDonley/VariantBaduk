@@ -2,6 +2,8 @@ import type { CreateGameConfig } from "../types/domain.ts";
 import { parseCustomGoban } from "./custom-goban.ts";
 
 export function gameConfigFromFormData(data: FormData): CreateGameConfig {
+  const viewersSeeInvisible = data.has("invisibleStonesShowViewers") ||
+    data.has("hiddenMoveShowViewers");
   return {
     boardSize: Number(data.get("boardSize")),
     name: String(data.get("gameName") ?? "").trim(),
@@ -30,7 +32,7 @@ export function gameConfigFromFormData(data: FormData): CreateGameConfig {
       colorGoColors: [
         String(data.get("colorGoColor1") ?? "#111111"),
         String(data.get("colorGoColor2") ?? "#eeeeee"),
-        String(data.get("colorGoColor3") ?? "#6c8cff"),
+        String(data.get("colorGoColor3") ?? "#4f9d69"),
         String(data.get("colorGoColor4") ?? "#e07a5f"),
       ],
       colorGoKomi: [
@@ -40,17 +42,25 @@ export function gameConfigFromFormData(data: FormData): CreateGameConfig {
         Number(data.get("colorGoKomi4")),
       ],
       phantomMove: data.has("phantomMove"),
-      phantomHideViewers: data.has("phantomHideViewers"),
+      phantomHideViewers: data.has("phantomHideViewers") ||
+        (data.has("phantomMove") && !viewersSeeInvisible),
       hiddenMove: data.has("hiddenMove"),
       hiddenMoveCount: Number(data.get("hiddenMoveCount")),
-      hiddenMoveShowViewers: data.has("hiddenMoveShowViewers"),
+      hiddenMoveShowViewers: viewersSeeInvisible,
       josekiCard: data.has("josekiCard"),
       tetris: data.has("tetris"),
       nPlusOne: data.has("nPlusOne"),
       nPlusOneCount: Number(data.get("nPlusOneCount")),
       traitor: data.has("traitor"),
       traitorStoneCount: Number(data.get("traitorMoveCount")),
-      showTraitorCounter: data.has("showTraitorCounter"),
+      randomTurn: data.has("randomTurn"),
+      teamGo: data.has("teamGo"),
+      teamGoSeatCounts: [
+        Number(data.get("teamGoSeats1")),
+        Number(data.get("teamGoSeats2")),
+        Number(data.get("teamGoSeats3")),
+        Number(data.get("teamGoSeats4")),
+      ],
     },
   };
 }

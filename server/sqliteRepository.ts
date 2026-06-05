@@ -67,6 +67,7 @@ export class SqliteRepository {
   constructor(path = "baduk.db") {
     this.db = new Database(path);
     this.db.exec(SCHEMA_SQL);
+    this.backfillFinishedWinnerTeams();
   }
 
   close(): void {
@@ -158,4 +159,31 @@ export class SqliteRepository {
       VALUES (?, ?, ?, ?, ?)
     `).run(gameId, seat.id, seat.playerUuid ?? null, seat.team, seat.resigned ? 1 : 0);
   }
+
+  private backfillFinishedWinnerTeams(): void {
+    const rows = this.db.prepare("SELECT snapshot_json FROM games WHERE phase = 'done'")
+      .all() as GameRow[];
+    const updates: GameRecord[] = [];
+    for (const row of rows) {
+      const record = JSON.parse(row.snapshot_json) as GameRecord;
+      if (record.state.play.winnerTeams?.length) continue;
+      const winnerTeams = inferFinishedWinnerTeams(record.state.seats);
+      if (winnerTeams.length === 0) continue;
+      record.state.play.winnerTeams = winnerTeams;
+      updates.push(record);
+    }
+    if (updates.length === 0) return;
+
+    this.db.transaction(() => {
+      const updateGame = this.db.prepare(
+        "UPDATE games SET snapshot_json = ? WHERE id = ?",
+      );
+      for (const record of updates) updateGame.run(JSON.stringify(record), record.id);
+    })();
+  }
+}
+
+function inferFinishedWinnerTeams(seats: Seat[]): number[] {
+  const activeTeams = [...new Set(seats.filter((seat) => !seat.resigned).map((seat) => seat.team))];
+  return activeTeams.length === 1 ? activeTeams : [];
 }
