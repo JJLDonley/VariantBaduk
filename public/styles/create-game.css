@@ -3,12 +3,18 @@
 .variant-settings,
 .variant-buttons,
 .variant-options,
-.game-option-settings,
 .time-settings,
 .time-options,
 .score-settings {
   display: grid;
   gap: 1rem;
+}
+
+.game-option-settings {
+  align-items: end;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .form-divider {
@@ -43,16 +49,58 @@
 
 .variant-options,
 .time-options {
-  gap: 0.75rem;
+  gap: 0.5rem;
+}
+
+.shell:not(.game-layout) .panel-card {
+  overflow-y: auto;
 }
 
 .score-settings {
-  gap: 0.75rem;
-  grid-template-columns: minmax(0, 1fr) minmax(7rem, 0.65fr);
+  gap: 0.5rem;
+}
+
+.compact-settings-row {
+  align-items: end;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(4.8rem, 1fr));
+}
+
+.compact-settings-row input,
+.compact-settings-row select {
+  min-width: 0;
+}
+
+.time-settings-compact {
+  display: grid;
+  gap: 0.5rem;
 }
 
 .seat-toggle {
   width: fit-content;
+}
+
+.board-size-setting {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.board-size-options {
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.board-size-button {
+  min-height: 2rem;
+  padding: 0.25rem 0.4rem;
+}
+
+.board-size-button.is-active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--accent);
 }
 
 .variant-button {
@@ -84,56 +132,361 @@
 }
 
 .internal-divider {
-  background: linear-gradient(to right, transparent, var(--divider-color) 8%, var(--divider-color) 92%, transparent);
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--divider-color) 8%,
+    var(--divider-color) 92%,
+    transparent
+  );
   block-size: 1px;
   inline-size: 100%;
 }
 
 [data-time-option][hidden],
 [data-variant-option][hidden],
-[data-variant-options-divider][hidden] {
+[data-variant-options-divider][hidden],
+[data-team-setup-options][hidden],
+[data-color-go-control][hidden],
+[data-team-go-seat][hidden],
+[data-team-go-seat-label][hidden],
+[data-variant-count-group][hidden],
+[data-invisible-stones-control][hidden] {
   display: none;
 }
 
-.color-go-options {
+.team-setup-options {
   align-items: start;
+  display: grid;
+  gap: 0.45rem;
   grid-template-columns: 1fr;
 }
 
-.color-go-row {
-  align-items: end;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.team-setup-matrix {
+  overflow-x: auto;
+  padding-bottom: 0.1rem;
 }
 
-.color-go-options label {
-  display: grid;
-  gap: 0.2rem;
+.team-setup-matrix table {
+  border-collapse: collapse;
+  table-layout: fixed;
   width: max-content;
 }
 
-.color-go-options select,
-.color-go-options input[type="color"] {
+.team-setup-matrix th,
+.team-setup-matrix td {
+  block-size: 2rem;
+  inline-size: 3.25rem;
+  padding: 0.12rem 0.18rem;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.team-setup-matrix th:first-child,
+.team-setup-matrix td:first-child {
   inline-size: 3rem;
-  min-height: 32px;
+}
+
+.team-setup-matrix th {
+  color: var(--meta-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.team-setup-matrix tbody th {
+  padding-right: 0.35rem;
+  text-align: right;
+}
+
+.team-setup-matrix td label {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+}
+
+.team-setup-matrix input[type="number"] {
+  box-sizing: border-box;
+  inline-size: 3rem;
+}
+
+.team-setup-empty {
+  color: var(--meta-text);
+  text-align: center;
+}
+
+.team-setup-options label {
+  gap: 0.2rem;
+}
+
+.team-setup-options select {
+  inline-size: 3.4rem;
+  min-height: 30px;
+  padding-block: 0.1rem;
+}
+
+.team-setup-options input[type="color"] {
+  block-size: 1.7rem;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  cursor: pointer;
+  inline-size: 1.7rem;
+  min-height: 0;
   padding: 0;
 }
 
-.color-go-options input[type="number"] {
-  inline-size: 4rem;
-  min-height: 32px;
-  padding: 0.2rem 0.35rem;
+.team-setup-options input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
 }
 
-.color-go-options input[type="color"] {
-  cursor: pointer;
+.team-setup-options input[type="color"]::-webkit-color-swatch {
+  border: 0;
+  border-radius: 999px;
 }
 
-.color-go-count select {
-  inline-size: 3.4rem;
+.team-setup-options input[type="number"] {
+  inline-size: 3rem;
+  min-height: 30px;
+  padding: 0.15rem 0.3rem;
 }
 
 .color-go-komi {
   inline-size: max-content;
+}
+
+.color-go-komi-row {
+  gap: 0.35rem;
+}
+
+.variant-options label,
+.game-option-settings label {
+  width: max-content;
+}
+
+.variant-options input[type="number"],
+.game-option-settings input[type="number"] {
+  inline-size: 4rem;
+}
+
+.game-option-settings {
+  grid-template-columns: repeat(2, max-content);
+}
+
+.variant-options {
+  align-items: start;
+  grid-template-columns: repeat(auto-fit, max-content);
+}
+
+.compact-variant-setting {
+  width: max-content;
+}
+
+.compact-variant-setting label {
+  width: max-content;
+}
+
+.variant-count-row {
+  align-items: end;
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(3, max-content);
+  margin-block: 0.15rem;
+}
+
+.team-count-inline {
+  align-items: center;
+  display: inline-grid;
+  gap: 0.35rem;
+  grid-template-columns: auto auto;
+  width: max-content;
+}
+
+.bonus-points-settings {
+  align-items: start;
+  gap: 0.25rem;
+  grid-template-columns: max-content;
+}
+
+.bonus-points-label {
+  color: var(--meta-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.bonus-points-row {
+  align-items: center;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: max-content max-content;
+}
+
+.ponnuki-points-field {
+  align-items: center;
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: auto 3rem;
+  width: max-content;
+}
+
+.bonus-points-row .check,
+.bonus-points-row .ponnuki-points-field {
+  align-items: center;
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: auto max-content;
+}
+
+.variant-count-group {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  width: max-content;
+}
+
+.variant-count-title {
+  color: var(--meta-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.variant-count-row .compact-variant-setting {
+  align-items: center;
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  text-align: center;
+}
+
+.variant-count-title {
+  inline-size: 100%;
+  justify-self: stretch;
+}
+
+.variant-options > * {
+  padding-block: 4px;
+}
+
+.variant-count-title {
+  text-align: left;
+}
+
+.team-setup-matrix td label,
+.team-setup-matrix input[type="color"] {
+  margin-inline: auto;
+}
+
+.team-setup-matrix input[type="color"] {
+  display: block;
+}
+
+.custom-board-settings {
+  align-items: center;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: max-content max-content;
+}
+
+.custom-board-settings h4 {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* Unified Variant Settings block style. */
+.bonus-points-settings,
+.custom-board-settings,
+.variant-count-group {
+  align-items: start;
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: max-content;
+  justify-items: start;
+  width: max-content;
+}
+
+.bonus-points-label,
+.custom-board-settings h4,
+.variant-count-title {
+  color: var(--meta-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  inline-size: auto;
+  justify-self: start;
+  margin: 0;
+  text-align: left;
+}
+
+.bonus-points-row,
+.custom-board-row,
+.variant-count-row {
+  align-items: center;
+  display: grid;
+  gap: 0.65rem;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  grid-template-columns: none;
+  margin-block: 0;
+}
+
+.bonus-points-row .check,
+.bonus-points-row .ponnuki-points-field,
+.variant-count-row .compact-variant-setting {
+  align-items: center;
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: auto max-content;
+  justify-items: start;
+  text-align: left;
+  width: max-content;
+}
+
+.variant-count-row {
+  grid-auto-flow: row;
+  grid-template-columns: max-content;
+}
+
+.variant-count-row .compact-variant-setting {
+  grid-template-columns: max-content;
+  justify-items: start;
+}
+
+.variant-count-row .compact-variant-setting[hidden],
+.variant-options [data-variant-option][hidden] {
+  display: none;
+}
+
+.variant-count-row {
+  align-items: flex-start !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.65rem;
+}
+
+.variant-count-row .compact-variant-setting {
+  align-items: flex-start !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.35rem;
+}
+
+.variant-count-row {
+  align-items: start !important;
+  display: grid !important;
+  gap: 0.85rem !important;
+  grid-auto-flow: column !important;
+  grid-auto-columns: max-content !important;
+  grid-template-columns: none !important;
+}
+
+.variant-count-row .compact-variant-setting {
+  align-items: center !important;
+  display: grid !important;
+  gap: 0.35rem !important;
+  grid-template-columns: max-content !important;
+  justify-items: center !important;
+  text-align: center !important;
+}
+
+.variant-count-row .compact-variant-setting[hidden] {
+  display: none !important;
 }

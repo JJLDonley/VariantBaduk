@@ -3,7 +3,7 @@
   --color-bg: #f7f7f7;
   --color-surface: #ffffff;
   --color-text: #111111;
-  --color-muted: #666666;
+  --color-muted: #777777;
   --color-accent: #222222;
   --color-accent-text: #ffffff;
   --color-border: #d0d0d0;
@@ -40,7 +40,7 @@
     --color-bg: #111111;
     --color-surface: #181818;
     --color-text: #eeeeee;
-    --color-muted: #999999;
+    --color-muted: #b8b8b8;
     --color-accent: #eeeeee;
     --color-accent-text: #111111;
     --color-border: #333333;
@@ -77,7 +77,7 @@
   --color-bg: #111111;
   --color-surface: #181818;
   --color-text: #eeeeee;
-  --color-muted: #999999;
+  --color-muted: #b8b8b8;
   --color-accent: #eeeeee;
   --color-accent-text: #111111;
   --color-border: #333333;

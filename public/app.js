@@ -185,13 +185,522 @@ function showManualCopyDialog(text) {
 
 // client/create/custom-goban.ts
 var CUSTOM_GOBAN_AUTOSAVE_KEY = "baduk:custom-goban-autosave";
+var CIRCLOID_POINTS = [
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  -1,
+  -1,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  -1,
+  -1,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  -1,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  -1,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  -1,
+  -1,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  -1,
+  -1,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1
+];
+var CIRCLOID_STAR_POINTS = [
+  {
+    x: 10,
+    y: 3
+  },
+  {
+    x: 5,
+    y: 5
+  },
+  {
+    x: 15,
+    y: 5
+  },
+  {
+    x: 3,
+    y: 10
+  },
+  {
+    x: 10,
+    y: 10
+  },
+  {
+    x: 17,
+    y: 10
+  },
+  {
+    x: 5,
+    y: 15
+  },
+  {
+    x: 15,
+    y: 15
+  },
+  {
+    x: 10,
+    y: 17
+  }
+];
 function parseCustomGoban(value, fallbackSize = 9) {
   if (!value) return emptyGoban(fallbackSize);
   try {
-    return JSON.parse(String(value));
+    return normalizeCustomGoban(JSON.parse(String(value)), fallbackSize);
   } catch {
     return emptyGoban(fallbackSize);
   }
+}
+function toggleCircloidGoban(root = document) {
+  const form = root.querySelector("#create-game-form");
+  const hidden = form?.querySelector("[name='customGoban']");
+  const customGobanToggle = form?.querySelector("[name='customGobanMode']");
+  const circloidToggle = root.querySelector("[name='circloidGobanMode']");
+  if (!form || !hidden || !customGobanToggle || !circloidToggle) return;
+  if (circloidToggle.checked) {
+    hidden.value = JSON.stringify(circloidGoban());
+    customGobanToggle.checked = true;
+  } else {
+    const size = Number(form.querySelector("[name='boardSize']")?.value ?? 9);
+    hidden.value = JSON.stringify(emptyGoban(size));
+    customGobanToggle.checked = true;
+  }
+  localStorage.setItem(CUSTOM_GOBAN_AUTOSAVE_KEY, hidden.value);
+  refreshCustomGobanPresetButtons(root);
+  customGobanToggle.dispatchEvent(new Event("change", {
+    bubbles: true
+  }));
+}
+function refreshCustomGobanPresetButtons(root = document) {
+  const form = root.querySelector("#create-game-form");
+  const hidden = form?.querySelector("[name='customGoban']");
+  const customGobanToggle = form?.querySelector("[name='customGobanMode']");
+  const circloidToggle = root.querySelector("[name='circloidGobanMode']");
+  if (!circloidToggle) return;
+  circloidToggle.checked = Boolean(customGobanToggle?.checked && hidden && isCircloidGoban(parseCustomGoban(hidden.value, 21)));
 }
 function restoreCustomGobanAutosave(root = document) {
   const form = root.querySelector("#create-game-form");
@@ -245,6 +754,7 @@ function openCustomGobanEditor(statusElement2) {
   const autosave = () => {
     hidden.value = JSON.stringify(goban);
     localStorage.setItem(CUSTOM_GOBAN_AUTOSAVE_KEY, hidden.value);
+    refreshCustomGobanPresetButtons();
   };
   autosave();
   const dialog = document.createElement("dialog");
@@ -327,6 +837,67 @@ function openCustomGobanEditor(statusElement2) {
   render();
   dialog.showModal();
 }
+function circloidGoban() {
+  const width = 21;
+  const height = 21;
+  return {
+    width,
+    height,
+    points: [
+      ...CIRCLOID_POINTS
+    ],
+    starPoints: CIRCLOID_STAR_POINTS
+  };
+}
+function isCircloidGoban(goban) {
+  const circloid = circloidGoban();
+  return goban.width === circloid.width && goban.height === circloid.height && goban.points.length === circloid.points.length && goban.points.every((point, index) => point === circloid.points[index]);
+}
+function normalizeCustomGoban(value, fallbackSize) {
+  if (!value || typeof value !== "object") return emptyGoban(fallbackSize);
+  const custom = value;
+  const width = boundedInteger(custom.width, 2, 25, fallbackSize);
+  const height = boundedInteger(custom.height, 2, 25, fallbackSize);
+  const source = Array.isArray(custom.points) ? custom.points : [];
+  const points = Array.from({
+    length: width * height
+  }, (_, index) => source[index] === -1 ? -1 : 0);
+  const embeddedStarPoints = source.flatMap((point, index) => point === 1 ? [
+    {
+      x: index % width,
+      y: Math.floor(index / width)
+    }
+  ] : []);
+  const explicitStarPoints = Array.isArray(custom.starPoints) ? custom.starPoints.filter((point) => Number.isInteger(point?.x) && Number.isInteger(point?.y) && point.x >= 0 && point.y >= 0 && point.x < width && point.y < height && points[point.y * width + point.x] !== -1).map((point) => ({
+    x: point.x,
+    y: point.y
+  })) : [];
+  const starPoints = uniquePoints([
+    ...explicitStarPoints,
+    ...embeddedStarPoints
+  ]);
+  return {
+    width,
+    height,
+    points,
+    ...starPoints.length ? {
+      starPoints
+    } : {}
+  };
+}
+function uniquePoints(points) {
+  const seen = /* @__PURE__ */ new Set();
+  return points.filter((point) => {
+    const key = `${point.x},${point.y}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+function boundedInteger(value, min, max, fallback) {
+  const number = Number(value);
+  return Number.isInteger(number) && number >= min && number <= max ? number : fallback;
+}
 function emptyGoban(size) {
   return {
     width: size,
@@ -337,6 +908,7 @@ function emptyGoban(size) {
 
 // client/create/config.ts
 function gameConfigFromFormData(data) {
+  const viewersSeeInvisible = data.has("invisibleStonesShowViewers") || data.has("hiddenMoveShowViewers");
   return {
     boardSize: Number(data.get("boardSize")),
     name: String(data.get("gameName") ?? "").trim(),
@@ -363,7 +935,7 @@ function gameConfigFromFormData(data) {
       colorGoColors: [
         String(data.get("colorGoColor1") ?? "#111111"),
         String(data.get("colorGoColor2") ?? "#eeeeee"),
-        String(data.get("colorGoColor3") ?? "#6c8cff"),
+        String(data.get("colorGoColor3") ?? "#4f9d69"),
         String(data.get("colorGoColor4") ?? "#e07a5f")
       ],
       colorGoKomi: [
@@ -373,22 +945,57 @@ function gameConfigFromFormData(data) {
         Number(data.get("colorGoKomi4"))
       ],
       phantomMove: data.has("phantomMove"),
-      phantomHideViewers: data.has("phantomHideViewers"),
+      phantomHideViewers: data.has("phantomHideViewers") || data.has("phantomMove") && !viewersSeeInvisible,
       hiddenMove: data.has("hiddenMove"),
       hiddenMoveCount: Number(data.get("hiddenMoveCount")),
-      hiddenMoveShowViewers: data.has("hiddenMoveShowViewers"),
+      hiddenMoveShowViewers: viewersSeeInvisible,
       josekiCard: data.has("josekiCard"),
       tetris: data.has("tetris"),
       nPlusOne: data.has("nPlusOne"),
       nPlusOneCount: Number(data.get("nPlusOneCount")),
       traitor: data.has("traitor"),
       traitorStoneCount: Number(data.get("traitorMoveCount")),
-      showTraitorCounter: data.has("showTraitorCounter")
+      randomTurn: data.has("randomTurn"),
+      teamGo: data.has("teamGo"),
+      teamGoSeatCounts: [
+        Number(data.get("teamGoSeats1")),
+        Number(data.get("teamGoSeats2")),
+        Number(data.get("teamGoSeats3")),
+        Number(data.get("teamGoSeats4"))
+      ]
     }
   };
 }
 
 // client/create/form.ts
+function selectBoardSizeOption(event) {
+  const button = event.currentTarget?.closest("[data-board-size-option]");
+  const option = button?.dataset.boardSizeOption;
+  const boardSize = document.querySelector("[name='boardSize']");
+  const customGoban = document.querySelector("[name='customGobanMode']");
+  if (!option || !boardSize || !customGoban) return;
+  if (option === "cgoban") {
+    customGoban.checked = true;
+  } else {
+    boardSize.value = option;
+    customGoban.checked = false;
+  }
+  updateBoardSizeButtons();
+  updateVariantOptions();
+}
+function updateBoardSizeButtons() {
+  const boardSize = document.querySelector("[name='boardSize']");
+  const customGoban = document.querySelector("[name='customGobanMode']");
+  const selected = customGoban?.checked ? "cgoban" : boardSize?.value;
+  for (const button of document.querySelectorAll("[data-board-size-option]")) {
+    const active = button.dataset.boardSizeOption === selected;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+    if (button.dataset.boardSizeOption === "cgoban") {
+      button.disabled = Boolean(customGoban?.disabled);
+    }
+  }
+}
 function cycleCreatorSeat(event) {
   const input = document.querySelector("[name='creatorSeat']");
   if (!input) return;
@@ -411,6 +1018,8 @@ function updateCreatorSeatOptions() {
 function creatorSeatOptions() {
   const color = document.querySelector("[name='colorGo']")?.checked;
   const zen = document.querySelector("[name='zen']")?.checked;
+  const teamGo = document.querySelector("[name='teamGo']")?.checked;
+  if (teamGo) return teamGoSeatOptions();
   if (color) {
     const count = Number(document.querySelector("[name='colorGoPlayerCount']")?.value ?? 3);
     return multiplayerSeatOptions(count);
@@ -434,6 +1043,32 @@ function creatorSeatOptions() {
     }
   ];
 }
+function teamGoSeatOptions() {
+  const colorGoEnabled = document.querySelector("[name='colorGo']")?.checked;
+  const teamCount = colorGoEnabled ? Number(document.querySelector("[name='colorGoPlayerCount']")?.value ?? 3) : 2;
+  const labels = [
+    "Black",
+    "White",
+    "Green",
+    "Red"
+  ].slice(0, teamCount);
+  const options = labels.flatMap((label, teamIndex) => {
+    const count = Number(document.querySelector(`[name='teamGoSeats${teamIndex + 1}']`)?.value ?? 0);
+    return Array.from({
+      length: Math.max(0, count)
+    }, (_, seatIndex) => ({
+      value: `team-${teamIndex + 1}-${seatIndex + 1}`,
+      label: `${label} ${seatIndex + 1}`
+    }));
+  });
+  return [
+    ...options,
+    {
+      value: "none",
+      label: "None"
+    }
+  ];
+}
 function multiplayerSeatOptions(count) {
   return [
     ...Array.from({
@@ -447,6 +1082,26 @@ function multiplayerSeatOptions(count) {
       label: "None"
     }
   ];
+}
+function updateColorGoKomiDefaults() {
+  const count = Number(document.querySelector("[name='colorGoPlayerCount']")?.value ?? 2);
+  const defaults = count >= 4 ? [
+    0,
+    3.5,
+    5.5,
+    7.5
+  ] : count === 3 ? [
+    0,
+    5.5,
+    7.5
+  ] : [
+    0,
+    7.5
+  ];
+  for (let team = 2; team <= 4; team++) {
+    const input = document.querySelector(`[name='colorGoKomi${team}']`);
+    if (input) input.value = String(defaults[team - 1] ?? 0);
+  }
 }
 function updateTimeOptions() {
   const selected = document.querySelector("[name='timeSystem']")?.value ?? "none";
@@ -469,17 +1124,48 @@ function updateRuleDefaults() {
 }
 function updateVariantOptions() {
   updateVariantConflicts();
-  const colorGoCount = Number(document.querySelector("[name='colorGoPlayerCount']")?.value ?? 3);
+  updateBoardSizeButtons();
+  const colorGoEnabled = document.querySelector("[name='colorGo']")?.checked;
+  const teamGoEnabled = document.querySelector("[name='teamGo']")?.checked;
+  const colorGoCount = colorGoEnabled ? Number(document.querySelector("[name='colorGoPlayerCount']")?.value ?? 3) : 2;
+  for (const setup of document.querySelectorAll("[data-team-setup-options]")) {
+    setup.hidden = !colorGoEnabled && !teamGoEnabled;
+  }
+  for (const control of document.querySelectorAll("[data-color-go-control]")) {
+    control.hidden = !colorGoEnabled;
+  }
+  for (const input of document.querySelectorAll("[data-team-go-seat]")) {
+    input.hidden = !teamGoEnabled;
+  }
+  for (const label of document.querySelectorAll("[data-team-go-seat-label]")) {
+    label.hidden = !teamGoEnabled;
+  }
   for (const option of document.querySelectorAll("[data-color-go-player]")) {
     const hidden = Number(option.dataset.colorGoPlayer) > colorGoCount;
     option.hidden = hidden;
     option.style.display = hidden ? "none" : "";
   }
+  const nPlusOneEnabled = document.querySelector("[name='nPlusOne']")?.checked;
+  const hiddenEnabled = document.querySelector("[name='hiddenMove']")?.checked;
+  const traitorEnabled = document.querySelector("[name='traitor']")?.checked;
+  const phantomEnabled = document.querySelector("[name='phantomMove']")?.checked;
+  for (const group of document.querySelectorAll("[data-variant-count-group]")) {
+    group.hidden = !nPlusOneEnabled && !hiddenEnabled && !traitorEnabled;
+  }
+  const invisibleStonesEnabled = Boolean(phantomEnabled || hiddenEnabled);
+  for (const control of document.querySelectorAll("[data-invisible-stones-control]")) {
+    control.hidden = !invisibleStonesEnabled;
+    for (const input of control.querySelectorAll("input")) {
+      input.disabled = !invisibleStonesEnabled;
+    }
+  }
   const scroller = document.querySelector(".panel-card");
   const scrollTop = scroller?.scrollTop ?? 0;
   for (const option of document.querySelectorAll("[data-variant-option]")) {
     const input = document.querySelector(`[name='${option.dataset.variantOption}']`);
-    option.hidden = !input?.checked;
+    const hidden = !input?.checked;
+    option.hidden = hidden;
+    option.style.display = hidden ? "none" : "";
   }
   const divider = document.querySelector("[data-variant-options-divider]");
   if (divider) divider.hidden = false;
@@ -493,10 +1179,13 @@ function invalidVariantComboMessage(data) {
     return "Joseki Card requires a 19\xD719 board.";
   }
   if (data.has("josekiCard") && (data.has("customGobanMode") || data.has("tetris") || data.has("zen") || data.has("colorGo"))) {
-    return "Joseki Card cannot be combined with CGoban, Tetris, Zen, or Color Go.";
+    return "Joseki Card cannot be combined with Custom board, Tetris, Zen, or Color Go.";
   }
   if (data.has("hiddenMove") && data.has("zen")) return "Hidden cannot be combined with Zen.";
   if (data.has("zen") && data.has("colorGo")) return "Zen cannot be combined with Color Go.";
+  if (data.has("teamGo") && data.has("zen")) {
+    return "Team Go cannot be combined with Zen.";
+  }
   if (data.has("tetris") && data.has("pixel")) return "Tetris cannot be combined with Pixel.";
   if (data.has("tetris") && data.has("nPlusOne") && Number(data.get("nPlusOneCount")) === 4) {
     return "Tetris cannot be combined with N+1 count 4.";
@@ -511,12 +1200,14 @@ function updateVariantConflicts() {
   const pixel = document.querySelector("[name='pixel']");
   const zen = document.querySelector("[name='zen']");
   const colorGo = document.querySelector("[name='colorGo']");
+  const teamGo = document.querySelector("[name='teamGo']");
   const hiddenMove = document.querySelector("[name='hiddenMove']");
   const nPlusOne = document.querySelector("[name='nPlusOne']");
   const nPlusOneCount = document.querySelector("[name='nPlusOneCount']");
-  if (!boardSize || !josekiCard || !customGoban || !tetris || !pixel || !zen || !colorGo || !hiddenMove || !nPlusOne || !nPlusOneCount) return;
+  if (!boardSize || !josekiCard || !customGoban || !tetris || !pixel || !zen || !colorGo || !teamGo || !hiddenMove || !nPlusOne || !nPlusOneCount) return;
   resolveExclusivePair(tetris, pixel);
   resolveExclusivePair(zen, colorGo);
+  resolveExclusivePair(zen, teamGo);
   resolveExclusivePair(zen, hiddenMove);
   if (josekiCard.checked) {
     boardSize.value = "19";
@@ -532,8 +1223,9 @@ function updateVariantConflicts() {
   setVariantDisabled(customGoban, josekiCard.checked);
   setVariantDisabled(tetris, pixel.checked || tetrisBlockedByNPlusOne || josekiCard.checked);
   setVariantDisabled(colorGo, zen.checked || josekiCard.checked);
+  setVariantDisabled(teamGo, zen.checked);
   setVariantDisabled(hiddenMove, zen.checked);
-  setVariantDisabled(zen, colorGo.checked || hiddenMove.checked || josekiCard.checked);
+  setVariantDisabled(zen, colorGo.checked || teamGo.checked || hiddenMove.checked || josekiCard.checked);
   setVariantDisabled(josekiCard, customGoban.checked || tetris.checked || zen.checked || colorGo.checked);
   boardSize.setCustomValidity(josekiCard.checked && Number(boardSize.value) !== 19 ? "Joseki Card requires a 19\xD719 board." : "");
   nPlusOneCount.setCustomValidity(tetrisChecked && Number(nPlusOneCount.value) === 4 ? "Tetris cannot use N+1 count 4." : "");
@@ -705,37 +1397,51 @@ function josekiCardDialogHtml(cards) {
 // client/create/form-bind.ts
 function bindCreateGameForm(submitHandler, statusElement2, root = document) {
   restoreCustomGobanAutosave(root);
+  refreshCustomGobanPresetButtons(root);
   root.querySelector("#create-game-form")?.addEventListener("submit", submitHandler);
   root.querySelector("[name='timeSystem']")?.addEventListener("change", updateTimeOptions);
   root.querySelector("[name='ruleset']")?.addEventListener("change", updateRuleDefaults);
   root.querySelector("[name='handicap']")?.addEventListener("change", updateRuleDefaults);
-  root.querySelector("[name='boardSize']")?.addEventListener("change", updateVariantOptions);
+  for (const button of root.querySelectorAll("[data-board-size-option]")) {
+    button.addEventListener("click", (event) => {
+      selectBoardSizeOption(event);
+      refreshCustomGobanPresetButtons(root);
+    });
+  }
   root.querySelector("[name='colorGoPlayerCount']")?.addEventListener("change", () => {
+    updateColorGoKomiDefaults();
     updateVariantOptions();
     updateCreatorSeatOptions();
   });
   root.querySelector("[name='zenPlayerCount']")?.addEventListener("change", updateCreatorSeatOptions);
   root.querySelector("[name='nPlusOneCount']")?.addEventListener("input", updateVariantOptions);
+  for (const input of root.querySelectorAll("[name^='teamGoSeats']")) {
+    input.addEventListener("input", updateCreatorSeatOptions);
+  }
   root.querySelector(".custom-goban-open")?.addEventListener("click", () => openCustomGobanEditor(statusElement2));
+  root.querySelector("[name='circloidGobanMode']")?.addEventListener("change", () => toggleCircloidGoban(root));
   root.querySelector(".joseki-card-open")?.addEventListener("click", () => openJosekiCardDialog(statusElement2));
   root.querySelector("[data-seat-toggle]")?.addEventListener("click", cycleCreatorSeat);
   for (const input of root.querySelectorAll(".variant-button input")) {
     input.addEventListener("change", updateVariantOptions);
     input.addEventListener("change", updateCreatorSeatOptions);
+    input.addEventListener("change", () => refreshCustomGobanPresetButtons(root));
   }
   refreshCreateGameForm();
 }
 function refreshCreateGameForm() {
   updateTimeOptions();
   updateRuleDefaults();
+  updateBoardSizeButtons();
   updateVariantOptions();
   updateCreatorSeatOptions();
+  refreshCustomGobanPresetButtons();
 }
 
 // client/game/variants.ts
 var ALL_VARIANT_RULES = [
   {
-    label: "CGoban",
+    label: "Custom",
     rule: "Custom board shapes can remove points from the goban."
   },
   {
@@ -777,6 +1483,14 @@ var ALL_VARIANT_RULES = [
   {
     label: "N+1",
     rule: "Making exactly N stones in a row grants an extra turn."
+  },
+  {
+    label: "Random Turn",
+    rule: "After each turn, one active player is chosen randomly to play next."
+  },
+  {
+    label: "Team Go",
+    rule: "Each color can have multiple seats; turns rotate by color team and then seat."
   },
   {
     label: "Traitor",
@@ -827,9 +1541,9 @@ function activeVariantRules(game) {
   if (game.config.customGoban) {
     const rule = "This game uses a custom board shape.";
     rules.push({
-      label: "CGoban",
+      label: "Custom",
       rule,
-      html: `<button class="variant-button variant-meta-button" data-cgoban-preview title="${escapeAttr(rule)}" type="button">CGoban</button>`
+      html: `<button class="variant-button variant-meta-button" data-cgoban-preview title="${escapeAttr(rule)}" type="button">Custom</button>`
     });
   }
   if (variants.capturesGivePoints) {
@@ -892,6 +1606,18 @@ function activeVariantRules(game) {
       rule: `Making exactly ${variants.nPlusOneCount ?? 1} in a row grants an extra turn.`
     });
   }
+  if (variants.teamGo) {
+    rules.push({
+      label: "Team Go",
+      rule: `Team seats: ${(variants.teamGoSeatCounts ?? []).join(" / ")}`
+    });
+  }
+  if (variants.randomTurn) {
+    rules.push({
+      label: "Random Turn",
+      rule: "After each turn, one active player is chosen randomly to play next."
+    });
+  }
   if (variants.traitor) {
     rules.push({
       label: `Traitor moves (${variants.traitorStoneCount ?? 6})`,
@@ -911,6 +1637,39 @@ function winnerText(game) {
     return escapeHtml(seat?.publicName ?? seat?.id ?? `Team ${team}`);
   });
   return names.length > 1 ? `Tie: ${names.join(", ")}` : names[0];
+}
+function resultText(game) {
+  const winners = winningTeams(game);
+  if (game.phase !== "done" || winners.length === 0) return "";
+  if (winners.length > 1) return winnerText({
+    ...game,
+    winnerTeams: winners
+  });
+  const winnerTeam = winners[0];
+  const prefix = teamResultPrefix(winnerTeam);
+  const lastAction = game.history?.at(-1)?.action;
+  const wonByResignation = lastAction === "resign" || game.seats.some((seat) => seat.resigned && seat.team !== winnerTeam);
+  if (wonByResignation) return `${prefix}+R`;
+  const winnerScore = game.points?.[winnerTeam - 1];
+  const nextBestScore = Math.max(...game.points.map((score, index) => index + 1 === winnerTeam ? -Infinity : score));
+  const margin = winnerScore - nextBestScore;
+  return Number.isFinite(margin) ? `${prefix}+${formatPoints(margin)}` : prefix;
+}
+function teamResultPrefix(team) {
+  if (team === 1) return "B";
+  if (team === 2) return "W";
+  return `T${team}`;
+}
+function winningTeams(game) {
+  if (game.winnerTeams?.length) return game.winnerTeams;
+  if (game.phase !== "done") return [];
+  const activeTeams = [
+    ...new Set(game.seats.filter((seat) => !seat.resigned).map((seat) => seat.team))
+  ];
+  return activeTeams.length === 1 ? activeTeams : [];
+}
+function formatPoints(points) {
+  return Number.isInteger(points) ? String(points) : points.toFixed(1);
 }
 function scoringHelpHtml() {
   return `
@@ -941,26 +1700,32 @@ function seatDisplayTeam(game, seat) {
 function stoneColor(game, team) {
   const color = game.config.variants?.colorGoColors?.[team - 1];
   if (color) return color;
-  return team === 1 ? "#080808" : team === 2 ? "#eeeeee" : "#777777";
+  const defaults = [
+    "#080808",
+    "#eeeeee",
+    "#4f9d69",
+    "#e07a5f",
+    "#6c8cff"
+  ];
+  return defaults[team - 1] ?? "#777777";
 }
 function placementPreviewTeam(game) {
   const activeTeam = game.seats[game.turn]?.team ?? 1;
   return game.config.variants?.zen ? (game.playMoves ?? 0) % 2 + 1 : activeTeam;
 }
 function seatMetaHtml(game, seat) {
-  if (game.phase === "done" && game.winnerTeams?.includes(seat.team)) return "Winner!";
+  if (game.phase === "done" && winningTeams(game).includes(seat.team)) return "Winner!";
+  const clockText = seatClockText(game, seat);
+  if (game.phase === "done" && winningTeams(game).includes(seat.team)) return "Winner!";
   const lines = [
-    seatClockText(game, seat)
+    clockText
   ];
-  if (game.config.variants?.traitor && game.config.variants?.showTraitorCounter) {
+  if (game.config.variants?.traitor) {
     const used = game.traitorStonesPlaced?.[seat.team - 1] ?? 0;
     const total = game.config.variants.traitorStoneCount ?? 6;
     lines.push(`TG: ${Math.max(0, total - used)}`);
   }
   return lines.join("<br />");
-}
-function viewersHtml(game) {
-  return (game.users ?? []).map((user) => `<div class="user-row">${escapeHtml(user.name ?? short(user.uuid))}</div>`).join("") || `<p class="muted-text">None</p>`;
 }
 function seatClockText(game, seat) {
   const time = game.config.time;
@@ -989,6 +1754,7 @@ function currentSeatTime(game, seat) {
     game.phase = "done";
     game.clockUpdatedAt = void 0;
     seat.resigned = true;
+    game.winnerTeams = winningTeams(game);
     return display;
   }
   let elapsed = Math.max(0, (Date.now() - game.clockUpdatedAt) / 1e3);
@@ -1024,7 +1790,12 @@ function neighborIndexes(index, width, height) {
 function isPlayableIntersection(game, x, y) {
   return x >= 0 && y >= 0 && x < game.boardWidth && y < game.boardHeight && game.board[y * game.boardWidth + x] !== -1;
 }
-function starPointCoords(width, height) {
+function starPointCoords(game) {
+  const customStarPoints = game.config?.customGoban?.starPoints;
+  if (customStarPoints?.length) {
+    return customStarPoints.filter(({ x, y }) => isPlayableIntersection(game, x, y));
+  }
+  const { boardWidth: width, boardHeight: height } = game;
   if (width !== height) return [];
   if (width === 9) {
     return [
@@ -1214,7 +1985,7 @@ function boardGridHtml(game, showCoordinates2 = true) {
   return `${lines.join("")}${horizontalCoords}${verticalCoords}`;
 }
 function starPointsHtml(game, showCoordinates2 = true) {
-  const coords = starPointCoords(game.boardWidth, game.boardHeight).filter(({ x, y }) => isPlayableIntersection(game, x, y));
+  const coords = starPointCoords(game).filter(({ x, y }) => isPlayableIntersection(game, x, y));
   const edge = boardEdge(showCoordinates2, game.boardWidth, game.boardHeight);
   return coords.map(({ x, y }) => {
     const left = edge + x * boardStep(game.boardWidth, edge);
@@ -1635,7 +2406,7 @@ function bindHistoryButtons({ panel: panel2, game, historyIndex, latestHistoryIn
   }
 }
 function bindSeats({ panel: panel2, game, statusElement: statusElement2, renderGameList: renderGameList3, showGame: showGame2 }) {
-  for (const button of panel2.querySelectorAll(".seat[data-open='true']")) {
+  for (const button of panel2.querySelectorAll(".seat[data-open='true'], .team-seat-player[data-open='true']")) {
     const handleJoinSeat = async (event) => {
       if (event.target?.closest(".seat-action")) return;
       const seatId = button.dataset.seatId;
@@ -1684,6 +2455,30 @@ function bindSeats({ panel: panel2, game, statusElement: statusElement2, renderG
 }
 
 // client/game/seats-render.ts
+function usersColumnHtml(game) {
+  const playerUuids = new Set(game.seats.flatMap((seat) => seat.playerUuid ? [
+    seat.playerUuid
+  ] : []));
+  const unseatedUsers = (game.users ?? []).filter((user) => !playerUuids.has(user.uuid));
+  const teamGroups = teamColorPlayerListsHtml(game);
+  const viewers = unseatedUsers.map((user) => `<div class="user-row">${escapeHtml(user.name ?? short(user.uuid))}</div>`).join("");
+  const viewerList = viewers || (teamGroups ? "" : `<p class="muted-text">None</p>`);
+  return `${teamGroups}${viewerList}`;
+}
+function teamColorPlayerListsHtml(game) {
+  const teams = [
+    ...new Set(game.seats.map((seat) => seat.team))
+  ];
+  return teams.map((team) => {
+    const players = game.seats.filter((seat) => seat.team === team && seat.playerUuid).map((seat) => `<div class="user-row">${escapeHtml(seat.publicName ?? short(seat.playerUuid))}</div>`).join("") || `<p class="muted-text">None</p>`;
+    return `
+      <div class="team-users" data-team="${team}">
+        <h4><i class="color-dot" data-team="${team}" style="--stone-color: ${stoneColor(game, team)}"></i>${teamLabel(team)}</h4>
+        <div class="team-users__players">${players}</div>
+      </div>
+    `;
+  }).join("");
+}
 function teamSeatsHtml(game, session2) {
   if (game.config.variants?.zen) {
     return `
@@ -1702,6 +2497,7 @@ function teamSeatsHtml(game, session2) {
       seat,
       index
     })).filter(({ seat }) => seat.team === team);
+    if (game.config.variants?.teamGo) return teamSeatCardHtml(game, team, seats, session2);
     return `
       <div class="team-seat-box" data-team="${team}">
         <div class="team-seat-list">
@@ -1711,10 +2507,38 @@ function teamSeatsHtml(game, session2) {
     `;
   }).join("");
 }
+function teamSeatCardHtml(game, team, seats, session2) {
+  const active = seats.find(({ index }) => index === game.turn);
+  const clockSeat = active?.seat ?? seats[0]?.seat;
+  return `
+    <div class="team-seat-box team-card" data-team="${team}">
+      <div class="team-seat-list">
+        ${seats.map(({ seat, index }) => teamSeatRowHtml(game, seat, index, session2)).join("")}
+      </div>
+      <div class="team-card-footer">
+        <div class="seat-time">${clockSeat ? seatMetaHtml(game, clockSeat) : "--"}</div>
+        <div class="seat-points">${clockSeat ? formatSeatPoints(displaySeatPoints(game, clockSeat)) : 0} pts</div>
+      </div>
+    </div>
+  `;
+}
+function teamSeatRowHtml(game, seat, index, session2) {
+  const active = index === game.turn ? "\u25B6" : "";
+  const player = seat.playerUuid ? escapeHtml(seat.publicName ?? short(seat.playerUuid)) : "open";
+  const open = !seat.playerUuid;
+  return `
+    <div class="team-seat-player" data-seat-id="${seat.id}" data-open="${open}" ${open ? 'role="button" tabindex="0"' : 'aria-disabled="true"'}>
+      <i class="turn-marker">${active}</i>
+      <i class="color-dot" data-team="${seat.team}" style="--stone-color: ${stoneColor(game, seat.team)}"></i>
+      <span class="team-seat-player__name">${player}</span>
+      ${seatActionHtml(seat, session2)}
+    </div>
+  `;
+}
 function playerSeatHtml(game, seat, index, session2) {
   const active = index === game.turn ? "\u25B6" : "";
   const player = seat.playerUuid ? escapeHtml(seat.publicName ?? short(seat.playerUuid)) : "open";
-  const action = seat.playerUuid === session2?.uuid ? `<button class="seat-action" data-action="leave" data-seat-id="${seat.id}" type="button">Leave</button>` : !seat.playerUuid ? `<span class="seat-actions"><button class="seat-action" data-action="join" data-seat-id="${seat.id}" type="button">Join</button><button class="seat-action" data-action="invite" data-seat-id="${seat.id}" type="button">Invite</button></span>` : "";
+  const action = seatActionHtml(seat, session2);
   const open = !seat.playerUuid;
   return `
     <div class="seat" data-seat-id="${seat.id}" data-open="${open}" ${open ? 'role="button" tabindex="0"' : 'aria-disabled="true"'}>
@@ -1733,8 +2557,20 @@ function displaySeatPoints(game, seat) {
   }
   return seat.team === 2 ? score + (game.config.komi ?? 0) : score;
 }
+function seatActionHtml(seat, session2) {
+  return seat.playerUuid === session2?.uuid ? `<button class="seat-action" data-action="leave" data-seat-id="${seat.id}" type="button">Leave</button>` : !seat.playerUuid ? `<span class="seat-actions"><button class="seat-action" data-action="join" data-seat-id="${seat.id}" type="button">Join</button><button class="seat-action" data-action="invite" data-seat-id="${seat.id}" type="button">Invite</button></span>` : "";
+}
 function formatSeatPoints(points) {
   return Number.isInteger(points) ? String(points) : String(Number(points.toFixed(2)));
+}
+function teamLabel(team) {
+  return [
+    "Black",
+    "White",
+    "Green",
+    "Red",
+    "Blue"
+  ][team - 1] ?? `Color ${team}`;
 }
 
 // client/game/territory.ts
@@ -1789,6 +2625,7 @@ function gameViewHtml(context) {
   const { game, session: session2, boardColors, boardOpacity, canNavigateHistory, visualHistoryIndex, playableHistoryIndex, playableHistoryCount, viewingHistory, passOrDoneDisabled, canUsePlayActions, canUndo, canResign, showCoordinates: showCoordinates2 } = context;
   const edge = boardEdge(showCoordinates2, game.boardWidth, game.boardHeight);
   const overlay = josekiPlacementOverlay(game, boardColors, boardOpacity);
+  const result = resultText(game);
   return `
     <div class="game-title-row">
       <h2>${escapeHtml(game.config.name || `Game #${game.id}`)}</h2>
@@ -1804,11 +2641,12 @@ function gameViewHtml(context) {
     </dialog>
     <div class="game-view">
       <section class="board-panel" aria-label="Board">
-        <div class="board" data-preview-team="${placementPreviewTeam(game)}" data-coordinates="${showCoordinates2}" style="--board-step: ${boardStep(game.boardWidth, edge)}%; --preview-color: ${stoneColor(game, placementPreviewTeam(game))}">
+        <div class="board ${result ? "has-result" : ""}" data-preview-team="${placementPreviewTeam(game)}" data-coordinates="${showCoordinates2}" style="--board-step: ${boardStep(game.boardWidth, edge)}%; --preview-color: ${stoneColor(game, placementPreviewTeam(game))}">
           ${boardGridHtml(game, showCoordinates2)}
           ${starPointsHtml(game, showCoordinates2)}
           ${territoryShadeHtml(game, overlay.colors, edge)}
           ${boardPointsHtml(game, overlay.colors, overlay.opacity, edge)}
+          ${result ? `<div class="game-result-overlay" aria-live="polite">${escapeHtml(result)}</div>` : ""}
         </div>
       </section>
       <section class="players-panel ui-stack" aria-label="Players and seats">
@@ -1837,7 +2675,7 @@ function gameViewHtml(context) {
         <h3>Users</h3>
         <div class="user-list">
           <h4>Users</h4>
-          ${viewersHtml(game)}
+          ${usersColumnHtml(game)}
         </div>
       </section>
     </div>

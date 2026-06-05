@@ -204,7 +204,7 @@
   }
 
   .shell {
-    align-items: start;
+    align-items: stretch;
     column-gap: 1.5rem;
     grid-template-columns:
       clamp(
@@ -212,6 +212,7 @@
         var(--game-list-inline-size-preferred),
         var(--game-list-inline-size)
       ) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     justify-content: stretch;
     height: 100svh;
     padding-top: var(--gutter-compact);
@@ -229,7 +230,8 @@
     display: block;
     grid-column: 1;
     grid-row: 2;
-    height: calc(100svh - var(--space-4) - var(--gutter-compact));
+    height: 100%;
+    max-height: 100%;
     min-height: 0;
     min-width: 0;
     overflow: visible;
@@ -286,7 +288,9 @@
     border: 0;
     grid-column: 2;
     grid-row: 2;
-    height: calc(100svh - var(--space-4) - var(--gutter-compact));
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
     overflow: hidden;
   }
 
@@ -630,4 +634,221 @@
   .shell.game-layout.desktop-fit .players-panel > .players-panel__metadata {
     display: grid;
   }
+}
+
+/* Progressive create-screen folding: Game Settings | Variants | Variant Settings. */
+@media (min-width: 760px) {
+  .shell:not(.game-layout) .panel-card {
+    overflow-y: auto;
+  }
+
+  .shell:not(.game-layout) .create-game-form {
+    align-items: start;
+    max-width: none;
+  }
+
+  .shell:not(.game-layout) .create-game-form > .form-divider {
+    align-self: stretch;
+    background: var(--divider-fade);
+  }
+}
+
+@media (min-width: 760px) and (max-width: 1099px) {
+  .shell:not(.game-layout) .create-game-form {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shell:not(.game-layout) .core-settings,
+  .shell:not(.game-layout) .variant-settings {
+    grid-column: 1;
+  }
+
+  .shell:not(.game-layout) .create-game-form > .form-divider,
+  .shell:not(.game-layout) .variant-settings > [data-variant-options-divider] {
+    block-size: 1px;
+    display: block;
+    inline-size: 100%;
+    min-height: 0;
+  }
+
+  .shell:not(.game-layout) .variant-settings {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shell:not(.game-layout) .variant-settings > h3,
+  .shell:not(.game-layout) .variant-settings > .variant-buttons,
+  .shell:not(.game-layout) .variant-settings > .game-option-settings,
+  .shell:not(.game-layout) .variant-settings > [data-variant-options-divider],
+  .shell:not(.game-layout) .variant-settings > .variant-options {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+@media (min-width: 1100px) and (max-width: 1649px) {
+  .shell:not(.game-layout) .create-game-form {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(13rem, 0.9fr) 1px minmax(16rem, 1fr);
+  }
+
+  .shell:not(.game-layout) .core-settings {
+    grid-column: 1;
+  }
+
+  .shell:not(.game-layout) .create-game-form > .form-divider {
+    block-size: 100%;
+    display: block;
+    grid-column: 2;
+    inline-size: 1px;
+  }
+
+  .shell:not(.game-layout) .variant-settings {
+    display: grid;
+    gap: 1rem;
+    grid-column: 3;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shell:not(.game-layout) .variant-settings > h3,
+  .shell:not(.game-layout) .variant-settings > .variant-buttons,
+  .shell:not(.game-layout) .variant-settings > .game-option-settings,
+  .shell:not(.game-layout) .variant-settings > [data-variant-options-divider],
+  .shell:not(.game-layout) .variant-settings > .variant-options {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .shell:not(.game-layout) .variant-settings > [data-variant-options-divider] {
+    block-size: 1px;
+    display: block;
+    inline-size: 100%;
+    min-height: 0;
+  }
+}
+
+@media (min-width: 1650px) {
+  .shell:not(.game-layout) .panel-card {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .shell:not(.game-layout) .create-game-form {
+    align-items: stretch;
+    block-size: 100%;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(13rem, 0.9fr) 1px minmax(14rem, 0.9fr) 1px minmax(16rem, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    min-block-size: 0;
+    overflow: hidden;
+  }
+
+  .shell:not(.game-layout) .core-settings {
+    align-content: start;
+    align-self: start;
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+
+  .shell:not(.game-layout) .create-game-form > .form-divider {
+    align-self: stretch;
+    block-size: auto;
+    display: block;
+    grid-column: 2;
+    grid-row: 1 / -1;
+    inline-size: 1px;
+  }
+
+  .shell:not(.game-layout) .variant-settings {
+    block-size: 100%;
+    display: grid;
+    gap: 1rem;
+    grid-column: 3 / 6;
+    grid-row: 1 / -1;
+    grid-template-columns: minmax(14rem, 0.9fr) 1px minmax(16rem, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    min-block-size: 0;
+    overflow: hidden;
+  }
+
+  .shell:not(.game-layout) .variant-settings > h3 {
+    align-self: start;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .shell:not(.game-layout) .variant-settings > .variant-buttons {
+    align-self: start;
+    grid-column: 1;
+    grid-row: 2;
+    min-block-size: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 0.25rem;
+  }
+
+  .shell:not(.game-layout) .variant-settings > [data-variant-options-divider] {
+    align-self: stretch;
+    block-size: auto;
+    display: block;
+    grid-column: 2;
+    grid-row: 1 / -1;
+    inline-size: 1px;
+  }
+
+  .shell:not(.game-layout) .variant-settings > .game-option-settings {
+    align-self: start;
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .shell:not(.game-layout) .variant-settings > .variant-options {
+    align-content: start;
+    align-self: stretch;
+    grid-column: 3;
+    grid-row: 2;
+    min-block-size: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 0.25rem;
+  }
+}
+
+@media (min-width: 1100px) {
+  .shell:not(.game-layout) .core-settings,
+  .shell:not(.game-layout) .variant-options {
+    max-block-size: calc(100svh - 8rem);
+    min-block-size: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 0.25rem;
+  }
+}
+
+.shell:not(.game-layout) .variant-options,
+.shell:not(.game-layout) .variant-settings > .variant-buttons {
+  scrollbar-width: none;
+}
+
+.shell:not(.game-layout) .variant-options::-webkit-scrollbar,
+.shell:not(.game-layout) .variant-settings > .variant-buttons::-webkit-scrollbar {
+  display: none;
+}
+
+.shell:not(.game-layout) .core-settings,
+.shell:not(.game-layout) .variant-options {
+  padding-inline: 2px;
+}
+
+.shell:not(.game-layout) .core-settings,
+.shell:not(.game-layout) .variant-options {
+  box-sizing: border-box;
+  padding-inline: 4px;
 }

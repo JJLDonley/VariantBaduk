@@ -108,30 +108,43 @@
               <input name="gameName" maxlength="32" autocomplete="off" />
             </label>
 
-            <label>
-              Board size
-              <select name="boardSize">
-                <option value="9">9 × 9</option>
-                <option value="13">13 × 13</option>
-                <option value="19">19 × 19</option>
-              </select>
-            </label>
+            <div class="board-size-setting">
+              <span>Board size</span>
+              <input name="boardSize" type="hidden" value="19" />
+              <input name="customGobanMode" type="checkbox" hidden />
+              <div class="board-size-options" data-board-size-group>
+                <button class="board-size-button" data-board-size-option="9" type="button">
+                  9
+                </button>
+                <button class="board-size-button" data-board-size-option="13" type="button">
+                  13
+                </button>
+                <button
+                  class="board-size-button is-active"
+                  data-board-size-option="19"
+                  type="button"
+                >
+                  19
+                </button>
+                <button class="board-size-button" data-board-size-option="cgoban" type="button">
+                  Custom
+                </button>
+              </div>
+            </div>
 
-            <label>
-              Scoring
-              <select name="ruleset">
-                <option value="chinese">Chinese</option>
-                <option value="aga">AGA</option>
-                <option value="japanese">Japanese</option>
-              </select>
-            </label>
-
-            <div class="score-settings">
+            <div class="score-settings compact-settings-row">
+              <label>
+                Scoring
+                <select name="ruleset">
+                  <option value="chinese">Chinese</option>
+                  <option value="aga">AGA</option>
+                  <option value="japanese">Japanese</option>
+                </select>
+              </label>
               <label>
                 Komi
                 <input name="komi" type="number" step="0.5" value="7.5" />
               </label>
-
               <label>
                 Handicap
                 <select name="handicap">
@@ -149,31 +162,33 @@
               </label>
             </div>
 
-            <label>
-              Time Setting
-              <select name="timeSystem">
-                <option value="none">None</option>
-                <option value="byoyomi">Byo-yomi</option>
-                <option value="fischer">Fischer</option>
-              </select>
-            </label>
-            <div class="time-options">
-              <label data-time-option="byoyomi fischer">
-                Main
-                <input name="mainTime" type="number" min="0" value="0" />
+            <div class="time-settings-compact">
+              <label>
+                Time
+                <select name="timeSystem">
+                  <option value="none">None</option>
+                  <option value="byoyomi">Byo-yomi</option>
+                  <option value="fischer">Fischer</option>
+                </select>
               </label>
-              <label data-time-option="byoyomi">
-                Periods
-                <input name="periods" type="number" min="0" value="0" />
-              </label>
-              <label data-time-option="byoyomi">
-                Period time
-                <input name="periodTime" type="number" min="0" value="0" />
-              </label>
-              <label data-time-option="fischer">
-                Fischer increment
-                <input name="fischerIncrement" type="number" min="0" value="0" />
-              </label>
+              <div class="time-options compact-settings-row">
+                <label data-time-option="byoyomi fischer">
+                  Main Time
+                  <input name="mainTime" type="number" min="0" value="0" />
+                </label>
+                <label data-time-option="byoyomi">
+                  Period Time
+                  <input name="periodTime" type="number" min="0" value="0" />
+                </label>
+                <label data-time-option="byoyomi">
+                  Number of Period
+                  <input name="periods" type="number" min="0" value="0" />
+                </label>
+                <label data-time-option="fischer">
+                  Increment
+                  <input name="fischerIncrement" type="number" min="0" value="0" />
+                </label>
+              </div>
             </div>
           </div>
 
@@ -182,8 +197,6 @@
           <div class="variant-settings ui-stack">
             <h3>Variants</h3>
             <div class="variant-buttons">
-              <label class="variant-button"><input type="checkbox" name="customGobanMode" />
-                CGoban</label>
               <label class="variant-button"><input type="checkbox" name="pixel" /> Pixel</label>
               <label class="variant-button"><input type="checkbox" name="zen" /> Zen</label>
               <label class="variant-button"><input type="checkbox" name="colorGo" /> Color</label>
@@ -196,98 +209,184 @@
               <label class="variant-button"><input type="checkbox" name="tetris" /> Tetris</label>
               <label class="variant-button"><input type="checkbox" name="nPlusOne" /> N+1</label>
               <label class="variant-button"><input type="checkbox" name="traitor" /> Traitor</label>
+              <label class="variant-button"><input type="checkbox" name="randomTurn" /> Random
+                Turn</label>
+              <label class="variant-button"><input type="checkbox" name="teamGo" /> Team Go</label>
             </div>
-            <div class="internal-divider" data-variant-options-divider aria-hidden="true"></div>
-            <div class="game-option-settings">
-              <label class="check">
-                <input type="checkbox" name="capturesGivePoints" /> Captures are points
-              </label>
-              <label>
-                Ponnukis are points
-                <input name="ponnukiPointValue" type="number" min="0" value="0" />
-              </label>
-            </div>
+            <div class="form-divider" data-variant-options-divider aria-hidden="true"></div>
             <div class="variant-options">
-              <div data-variant-option="customGobanMode">
-                <input name="customGoban" type="hidden" />
-                <button class="custom-goban-open" type="button">Edit Board</button>
+              <div class="game-option-settings bonus-points-settings" aria-label="Bonus points">
+                <span class="bonus-points-label">Bonus Points:</span>
+                <div class="bonus-points-row">
+                  <label class="check">
+                    Captures <input type="checkbox" name="capturesGivePoints" />
+                  </label>
+                  <label class="ponnuki-points-field">
+                    Ponnuki
+                    <input name="ponnukiPointValue" type="number" min="0" value="0" />
+                  </label>
+                </div>
               </div>
-              <label data-variant-option="nPlusOne">
-                N+1 count
-                <input name="nPlusOneCount" type="number" min="1" value="1" />
-              </label>
-              <label data-variant-option="zen">
-                Zen players
-                <input name="zenPlayerCount" type="number" min="3" max="9" step="2" value="3" />
-              </label>
-              <div data-variant-option="colorGo" class="color-go-options">
-                <label class="color-go-count">Players <select name="colorGoPlayerCount">
+              <div data-variant-option="customGobanMode" class="custom-board-settings">
+                <h4>Custom Board</h4>
+                <input name="customGoban" type="hidden" />
+                <div class="custom-board-row">
+                  <button class="custom-goban-open" type="button">Edit</button>
+                  <label class="variant-button"><input type="checkbox" name="circloidGobanMode" />
+                    Circloid</label>
+                </div>
+              </div>
+              <div class="team-setup-options" data-team-setup-options hidden>
+                <label class="color-go-count team-count-inline" data-color-go-control><span
+                  >Team</span><select
+                    name="colorGoPlayerCount"
+                  >
                     <option value="2">2</option>
                     <option value="3" selected>3</option>
                     <option value="4">4</option>
                   </select></label>
-                <div class="color-go-row" aria-label="Player colors">
-                  <label>P1 <input name="colorGoColor1" type="color" value="#111111" /></label>
-                  <label>P2 <input name="colorGoColor2" type="color" value="#eeeeee" /></label>
-                  <label data-color-go-player="3">P3 <input
-                      name="colorGoColor3"
-                      type="color"
-                      value="#6c8cff"
-                    /></label>
-                  <label data-color-go-player="4">P4 <input
-                      name="colorGoColor4"
-                      type="color"
-                      value="#e07a5f"
-                    /></label>
-                </div>
-                <div class="color-go-row" aria-label="Player komis">
-                  <label class="color-go-komi">P2 komi <input
-                      name="colorGoKomi2"
-                      type="number"
-                      step="0.5"
-                      value="7.5"
-                    /></label>
-                  <label class="color-go-komi" data-color-go-player="3">P3 komi <input
-                      name="colorGoKomi3"
-                      type="number"
-                      step="0.5"
-                      value="0"
-                    /></label>
-                  <label class="color-go-komi" data-color-go-player="4">P4 komi <input
-                      name="colorGoKomi4"
-                      type="number"
-                      step="0.5"
-                      value="0"
-                    /></label>
+                <div class="team-setup-matrix" aria-label="Team setup">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th></th>
+                        <th>Black</th>
+                        <th>White</th>
+                        <th data-color-go-player="3">Green</th>
+                        <th data-color-go-player="4">Red</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <th scope="row">Color</th>
+                        <td>
+                          <label aria-label="Black color"><input
+                              name="colorGoColor1"
+                              type="color"
+                              value="#111111"
+                            /></label>
+                        </td>
+                        <td>
+                          <label aria-label="White color"><input
+                              name="colorGoColor2"
+                              type="color"
+                              value="#eeeeee"
+                            /></label>
+                        </td>
+                        <td data-color-go-player="3">
+                          <label aria-label="Green color"><input
+                              name="colorGoColor3"
+                              type="color"
+                              value="#4f9d69"
+                            /></label>
+                        </td>
+                        <td data-color-go-player="4">
+                          <label aria-label="Red color"><input
+                              name="colorGoColor4"
+                              type="color"
+                              value="#e07a5f"
+                            /></label>
+                        </td>
+                      </tr>
+                      <tr data-team-go-seat-label>
+                        <th scope="row">Seats</th>
+                        <td>
+                          <input
+                            name="teamGoSeats1"
+                            data-team-go-seat
+                            type="number"
+                            min="0"
+                            max="9"
+                            value="2"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            name="teamGoSeats2"
+                            data-team-go-seat
+                            type="number"
+                            min="0"
+                            max="9"
+                            value="2"
+                          />
+                        </td>
+                        <td data-color-go-player="3">
+                          <input
+                            name="teamGoSeats3"
+                            data-team-go-seat
+                            type="number"
+                            min="0"
+                            max="9"
+                            value="0"
+                          />
+                        </td>
+                        <td data-color-go-player="4">
+                          <input
+                            name="teamGoSeats4"
+                            data-team-go-seat
+                            type="number"
+                            min="0"
+                            max="9"
+                            value="0"
+                          />
+                        </td>
+                      </tr>
+                      <tr data-color-go-control>
+                        <th scope="row">Komi</th>
+                        <td class="team-setup-empty">—</td>
+                        <td><input name="colorGoKomi2" type="number" step="0.5" value="5.5" /></td>
+                        <td data-color-go-player="3">
+                          <input
+                            name="colorGoKomi3"
+                            type="number"
+                            step="0.5"
+                            value="7.5"
+                          />
+                        </td>
+                        <td data-color-go-player="4">
+                          <input
+                            name="colorGoKomi4"
+                            type="number"
+                            step="0.5"
+                            value="7.5"
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
-              <label class="check" data-variant-option="phantomMove">
-                <input type="checkbox" name="phantomHideViewers" /> Hide phantom stones from viewers
+              <div class="variant-count-group" data-variant-count-group hidden>
+                <span class="variant-count-title">Count / Moves</span>
+                <div class="variant-count-row">
+                  <label class="compact-variant-setting" data-variant-option="nPlusOne">
+                    N+1
+                    <input name="nPlusOneCount" type="number" min="1" value="1" />
+                  </label>
+                  <label class="compact-variant-setting" data-variant-option="hiddenMove">
+                    Hidden
+                    <input name="hiddenMoveCount" type="number" min="1" max="20" value="3" />
+                  </label>
+                  <label class="compact-variant-setting" data-variant-option="traitor">
+                    Traitor
+                    <input name="traitorMoveCount" type="number" min="1" value="6" />
+                  </label>
+                </div>
+              </div>
+              <label data-variant-option="zen">
+                Zen players
+                <input name="zenPlayerCount" type="number" min="3" max="9" step="2" value="3" />
               </label>
-              <div data-variant-option="hiddenMove" class="ui-stack">
-                <label>Hidden stones per player <input
-                    name="hiddenMoveCount"
-                    type="number"
-                    min="1"
-                    max="20"
-                    value="3"
-                  /></label>
-                <label class="check"><input type="checkbox" name="hiddenMoveShowViewers" checked />
-                  Show hidden setup stones to viewers</label>
-              </div>
+              <label class="check" data-invisible-stones-control hidden>
+                <input type="checkbox" name="invisibleStonesShowViewers" checked /> Viewers see
+                invisible stones
+              </label>
               <div data-variant-option="josekiCard" class="ui-stack">
                 <button class="joseki-card-open" type="button">Preview Joseki Cards</button>
                 <p class="ui-muted">
                   Joseki Card requires 19×19. Selection and placement happen before normal play.
                 </p>
               </div>
-              <label data-variant-option="traitor">
-                Traitor moves
-                <input name="traitorMoveCount" type="number" min="1" value="6" />
-              </label>
-              <label class="check" data-variant-option="traitor">
-                <input type="checkbox" name="showTraitorCounter" /> Display traitor counter
-              </label>
             </div>
           </div>
         </form>

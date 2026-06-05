@@ -175,6 +175,30 @@
   background: color-mix(in srgb, var(--preview-color, var(--stone-neutral)) 55%, transparent);
 }
 
+.board.has-result .board-line,
+.board.has-result .coord,
+.board.has-result .star-point,
+.board.has-result .territory-shade,
+.board.has-result .point {
+  filter: blur(2px);
+}
+
+.game-result-overlay {
+  align-items: center;
+  background: color-mix(in srgb, var(--surface-bg) 52%, transparent);
+  color: var(--surface-text);
+  display: flex;
+  font-size: clamp(2.5rem, 14vw, 7rem);
+  font-weight: 800;
+  inset: 0;
+  justify-content: center;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  position: absolute;
+  text-shadow: 0 2px 16px rgb(0 0 0 / 0.35);
+  z-index: 5;
+}
+
 .board[data-preview-team="2"] .point.is-preview[data-color="0"]::after {
   box-shadow: inset 0 0 0 1px var(--preview-outline);
 }
@@ -240,6 +264,57 @@
   grid-column: 2;
   grid-row: 2;
   justify-self: end;
+}
+
+.team-card {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.35rem;
+}
+
+.team-card .team-seat-list {
+  gap: 0.04rem;
+}
+
+.team-seat-player {
+  align-items: center;
+  background: var(--surface-bg);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 0.28rem;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  padding: 0.28rem 0.45rem;
+}
+
+.team-seat-player[data-open="true"] {
+  cursor: pointer;
+}
+
+.team-seat-player__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-seat-player .seat-action,
+.team-seat-player .seat-actions {
+  grid-column: 4;
+  grid-row: 1;
+  justify-self: end;
+}
+
+.team-card-footer {
+  align-items: end;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0 0.45rem;
+}
+
+.team-card-footer .seat-time,
+.team-card-footer .seat-points {
+  grid-column: auto;
+  grid-row: auto;
 }
 
 .user-row {
