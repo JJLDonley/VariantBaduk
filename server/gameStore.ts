@@ -59,7 +59,9 @@ export type GameConfig = {
     nPlusOne: boolean;
     nPlusOneCount?: number;
     traitor: boolean;
+    traitorMode?: "moves" | "percentage";
     traitorStoneCount?: number;
+    traitorChance?: number;
     showTraitorCounter?: boolean;
     randomTurn?: boolean;
     teamGo?: boolean;

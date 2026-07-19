@@ -110,9 +110,13 @@ export function seatMetaHtml(game: Game, seat: Seat): string {
   if (game.phase === "done" && winningTeams(game).includes(seat.team)) return "Winner!";
   const lines = [clockText];
   if (game.config.variants?.traitor) {
-    const used = game.traitorStonesPlaced?.[seat.team - 1] ?? 0;
-    const total = game.config.variants.traitorStoneCount ?? 6;
-    lines.push(`TG: ${Math.max(0, total - used)}`);
+    if (game.config.variants.traitorMode === "percentage") {
+      lines.push(`TG: ${game.config.variants.traitorChance ?? 10}%`);
+    } else {
+      const used = game.traitorStonesPlaced?.[seat.team - 1] ?? 0;
+      const total = game.config.variants.traitorStoneCount ?? 6;
+      lines.push(`TG: ${Math.max(0, total - used)}`);
+    }
   }
   return lines.join("<br />");
 }

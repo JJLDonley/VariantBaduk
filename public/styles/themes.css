@@ -7,14 +7,14 @@
   --color-accent: #222222;
   --color-accent-text: #ffffff;
   --color-border: #d0d0d0;
-  --color-danger: #c98282;
+  --color-danger: #c62828;
   --color-focus-ring: color-mix(in srgb, var(--color-accent) 45%, transparent);
   --color-backdrop: rgb(128 128 128 / 45%);
   --color-shadow-accent: color-mix(in srgb, var(--color-accent) 30%, transparent);
 
   --board-bg: #c89448;
   --board-border: #6a431f;
-  --board-line: #4f2d12;
+  --board-line: #111111;
   --board-point-outline: var(--color-danger);
   --no-score-stripe: rgb(150 35 35 / 75%);
   --preview-outline: rgb(80 80 80 / 45%);
@@ -23,7 +23,7 @@
 
   --stone-black: #080808;
   --stone-white: #eeeeee;
-  --stone-white-border: #999999;
+  --stone-white-border: #c6c6c6;
   --stone-black-border: #555555;
   --stone-neutral: #777777;
   --stone-blue: #6c8cff;
@@ -51,7 +51,7 @@
 
     --board-bg: #c89448;
     --board-border: #6a431f;
-    --board-line: #4f2d12;
+    --board-line: #111111;
     --board-point-outline: var(--color-danger);
     --no-score-stripe: rgb(205 70 70 / 72%);
     --preview-outline: rgb(220 220 220 / 38%);
@@ -60,7 +60,7 @@
 
     --stone-black: #050505;
     --stone-white: #eeeeee;
-    --stone-white-border: #999999;
+    --stone-white-border: #c6c6c6;
     --stone-black-border: #555555;
     --stone-neutral: #777777;
     --stone-blue: #6c8cff;
@@ -88,7 +88,7 @@
 
   --board-bg: #c89448;
   --board-border: #6a431f;
-  --board-line: #4f2d12;
+  --board-line: #111111;
   --board-point-outline: var(--color-danger);
   --no-score-stripe: rgb(205 70 70 / 72%);
   --preview-outline: rgb(220 220 220 / 38%);
@@ -97,7 +97,7 @@
 
   --stone-black: #050505;
   --stone-white: #eeeeee;
-  --stone-white-border: #999999;
+  --stone-white-border: #c6c6c6;
   --stone-black-border: #555555;
   --stone-neutral: #777777;
   --stone-blue: #6c8cff;

@@ -38,7 +38,7 @@ const ALL_VARIANT_RULES: VariantRule[] = [
   },
   {
     label: "Traitor",
-    rule: "Some stones may play as another color instead of the player's normal color.",
+    rule: "Some stones may play as another color, using either a move limit or fixed chance.",
   },
 ];
 
@@ -176,12 +176,20 @@ function activeVariantRules(game: Game): VariantRule[] {
     });
   }
   if (variants.traitor) {
-    rules.push({
-      label: `Traitor moves (${variants.traitorStoneCount ?? 6})`,
-      rule: `Some stones may play as another color (${
-        variants.traitorStoneCount ?? 6
-      } traitor moves).`,
-    });
+    if (variants.traitorMode === "percentage") {
+      const chance = variants.traitorChance ?? 10;
+      rules.push({
+        label: `Traitor chance (${chance}%)`,
+        rule: `Each move has a fixed ${chance}% chance to play as another color.`,
+      });
+    } else {
+      rules.push({
+        label: `Traitor moves (${variants.traitorStoneCount ?? 6})`,
+        rule: `Some stones may play as another color (${
+          variants.traitorStoneCount ?? 6
+        } traitor moves).`,
+      });
+    }
   }
   return rules;
 }

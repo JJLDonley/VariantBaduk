@@ -52,7 +52,9 @@ export function gameConfigFromFormData(data: FormData): CreateGameConfig {
       nPlusOne: data.has("nPlusOne"),
       nPlusOneCount: Number(data.get("nPlusOneCount")),
       traitor: data.has("traitor"),
-      traitorStoneCount: Number(data.get("traitorMoveCount")),
+      traitorMode: data.get("traitorMode") === "percentage" ? "percentage" : "moves",
+      traitorStoneCount: Number(data.get("traitorMoveCount") ?? 6),
+      traitorChance: Number(data.get("traitorChancePercent") ?? 10),
       randomTurn: data.has("randomTurn"),
       teamGo: data.has("teamGo"),
       teamGoSeatCounts: [

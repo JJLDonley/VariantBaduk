@@ -36,7 +36,9 @@ export const DEFAULT_CONFIG: GameConfig = {
     nPlusOne: false,
     nPlusOneCount: 1,
     traitor: false,
+    traitorMode: "moves",
     traitorStoneCount: 6,
+    traitorChance: 10,
     showTraitorCounter: false,
     randomTurn: false,
     teamGo: false,
@@ -127,8 +129,17 @@ export function normalizeConfig(config: Partial<GameConfig>): GameConfig {
   if (config.variants?.nPlusOne || config.variants?.nPlusOneCount !== undefined) {
     normalized.variants.nPlusOneCount = positiveNumber(config.variants?.nPlusOneCount);
   }
-  if (config.variants?.traitor || config.variants?.traitorStoneCount !== undefined) {
+  if (
+    config.variants?.traitor || config.variants?.traitorMode !== undefined ||
+    config.variants?.traitorStoneCount !== undefined || config.variants?.traitorChance !== undefined
+  ) {
+    normalized.variants.traitorMode = normalizeTraitorMode(config.variants?.traitorMode);
     normalized.variants.traitorStoneCount = positiveNumber(config.variants?.traitorStoneCount ?? 6);
+    normalized.variants.traitorChance = boundedInteger(
+      config.variants?.traitorChance ?? 10,
+      1,
+      100,
+    );
     if (config.variants?.showTraitorCounter) normalized.variants.showTraitorCounter = true;
   }
 
@@ -218,6 +229,10 @@ function normalizeTimeSystem(system: unknown): TimeConfig["system"] {
   return ["none", "byoyomi", "fischer"].includes(String(system))
     ? system as TimeConfig["system"]
     : DEFAULT_CONFIG.time?.system ?? "none";
+}
+
+function normalizeTraitorMode(mode: unknown): "moves" | "percentage" {
+  return mode === "percentage" ? "percentage" : "moves";
 }
 
 function finiteNumber(value: unknown, fallback: number): number {

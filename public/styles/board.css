@@ -1,8 +1,9 @@
 .board {
   aspect-ratio: 1 / 1;
   background: var(--board-bg);
-  border: 2px solid var(--board-border);
-  border-radius: var(--radius-sm);
+  border: 0;
+  border-radius: 0.15rem;
+  box-shadow: 0 1px 4px var(--board-shadow);
   inline-size: min(100%, 100dvw, 100dvh);
   block-size: auto;
   margin-bottom: 0;
@@ -169,6 +170,10 @@
 .point[data-color="99"]::after {
   background: var(--stone-neutral);
   box-shadow: inset 0 0 0 1px var(--surface-border);
+}
+
+:root:not([data-stone-shadows="off"]) .point:not([data-color="0"])::after {
+  filter: drop-shadow(1.5px 2px 1.5px var(--stone-shadow));
 }
 
 .board .point.is-preview[data-color="0"]::after {

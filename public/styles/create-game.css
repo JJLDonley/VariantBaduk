@@ -285,6 +285,21 @@
   width: max-content;
 }
 
+.traitor-setting-controls {
+  align-items: center;
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: max-content 4rem;
+}
+
+.traitor-setting-controls select {
+  inline-size: auto;
+}
+
+.traitor-setting-controls [hidden] {
+  display: none;
+}
+
 .variant-count-row {
   align-items: end;
   display: grid;

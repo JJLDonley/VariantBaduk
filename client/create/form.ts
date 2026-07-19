@@ -168,6 +168,15 @@ export function updateVariantOptions(): void {
   for (const group of document.querySelectorAll<HTMLElement>("[data-variant-count-group]")) {
     group.hidden = !nPlusOneEnabled && !hiddenEnabled && !traitorEnabled;
   }
+  const traitorMode = document.querySelector<HTMLSelectElement>("[name='traitorMode']")?.value ??
+    "moves";
+  for (
+    const input of document.querySelectorAll<HTMLInputElement>("[data-traitor-mode-value]")
+  ) {
+    const hidden = input.dataset.traitorModeValue !== traitorMode;
+    input.hidden = hidden;
+    input.disabled = hidden;
+  }
   const invisibleStonesEnabled = Boolean(phantomEnabled || hiddenEnabled);
   for (const control of document.querySelectorAll<HTMLElement>("[data-invisible-stones-control]")) {
     control.hidden = !invisibleStonesEnabled;

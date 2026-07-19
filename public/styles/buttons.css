@@ -69,6 +69,16 @@ button[data-tooltip]:focus-visible::after {
   transform: translateY(0);
 }
 
+.header-action-icon {
+  block-size: 1.1rem;
+  fill: none;
+  inline-size: 1.1rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
 button.is-confirmed {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--color-shadow-accent);
@@ -79,6 +89,7 @@ button.is-confirmed {
 .theme-toggle,
 .sound-toggle,
 .coordinate-toggle,
+.stone-shadow-toggle,
 .app-help,
 .game-info-toggle,
 .dialog-close,
@@ -86,6 +97,20 @@ button.is-confirmed {
   --button-bg: transparent;
   --button-bg-hover: transparent;
   --button-text: var(--surface-text);
+}
+
+.stone-shadow-toggle__stone {
+  background: var(--stone-white);
+  border: 1px solid var(--stone-white-border);
+  border-radius: 999px;
+  block-size: 0.85rem;
+  box-shadow: 1.5px 2px 1.5px var(--stone-shadow);
+  display: block;
+  inline-size: 0.85rem;
+}
+
+.stone-shadow-toggle[aria-pressed="false"] .stone-shadow-toggle__stone {
+  box-shadow: none;
 }
 
 .button-small,

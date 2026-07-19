@@ -46,6 +46,7 @@ export function bindCreateGameForm(
     updateCreatorSeatOptions,
   );
   root.querySelector("[name='nPlusOneCount']")?.addEventListener("input", updateVariantOptions);
+  root.querySelector("[name='traitorMode']")?.addEventListener("change", updateVariantOptions);
   for (const input of root.querySelectorAll("[name^='teamGoSeats']")) {
     input.addEventListener("input", updateCreatorSeatOptions);
   }

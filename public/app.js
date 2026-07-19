@@ -954,7 +954,9 @@ function gameConfigFromFormData(data) {
       nPlusOne: data.has("nPlusOne"),
       nPlusOneCount: Number(data.get("nPlusOneCount")),
       traitor: data.has("traitor"),
-      traitorStoneCount: Number(data.get("traitorMoveCount")),
+      traitorMode: data.get("traitorMode") === "percentage" ? "percentage" : "moves",
+      traitorStoneCount: Number(data.get("traitorMoveCount") ?? 6),
+      traitorChance: Number(data.get("traitorChancePercent") ?? 10),
       randomTurn: data.has("randomTurn"),
       teamGo: data.has("teamGo"),
       teamGoSeatCounts: [
@@ -1151,6 +1153,12 @@ function updateVariantOptions() {
   const phantomEnabled = document.querySelector("[name='phantomMove']")?.checked;
   for (const group of document.querySelectorAll("[data-variant-count-group]")) {
     group.hidden = !nPlusOneEnabled && !hiddenEnabled && !traitorEnabled;
+  }
+  const traitorMode = document.querySelector("[name='traitorMode']")?.value ?? "moves";
+  for (const input of document.querySelectorAll("[data-traitor-mode-value]")) {
+    const hidden = input.dataset.traitorModeValue !== traitorMode;
+    input.hidden = hidden;
+    input.disabled = hidden;
   }
   const invisibleStonesEnabled = Boolean(phantomEnabled || hiddenEnabled);
   for (const control of document.querySelectorAll("[data-invisible-stones-control]")) {
@@ -1415,6 +1423,7 @@ function bindCreateGameForm(submitHandler, statusElement2, root = document) {
   });
   root.querySelector("[name='zenPlayerCount']")?.addEventListener("change", updateCreatorSeatOptions);
   root.querySelector("[name='nPlusOneCount']")?.addEventListener("input", updateVariantOptions);
+  root.querySelector("[name='traitorMode']")?.addEventListener("change", updateVariantOptions);
   for (const input of root.querySelectorAll("[name^='teamGoSeats']")) {
     input.addEventListener("input", updateCreatorSeatOptions);
   }
@@ -1494,7 +1503,7 @@ var ALL_VARIANT_RULES = [
   },
   {
     label: "Traitor",
-    rule: "Some stones may play as another color instead of the player's normal color."
+    rule: "Some stones may play as another color, using either a move limit or fixed chance."
   }
 ];
 function variantsHtml(game) {
@@ -1619,10 +1628,18 @@ function activeVariantRules(game) {
     });
   }
   if (variants.traitor) {
-    rules.push({
-      label: `Traitor moves (${variants.traitorStoneCount ?? 6})`,
-      rule: `Some stones may play as another color (${variants.traitorStoneCount ?? 6} traitor moves).`
-    });
+    if (variants.traitorMode === "percentage") {
+      const chance = variants.traitorChance ?? 10;
+      rules.push({
+        label: `Traitor chance (${chance}%)`,
+        rule: `Each move has a fixed ${chance}% chance to play as another color.`
+      });
+    } else {
+      rules.push({
+        label: `Traitor moves (${variants.traitorStoneCount ?? 6})`,
+        rule: `Some stones may play as another color (${variants.traitorStoneCount ?? 6} traitor moves).`
+      });
+    }
   }
   return rules;
 }
@@ -1721,9 +1738,13 @@ function seatMetaHtml(game, seat) {
     clockText
   ];
   if (game.config.variants?.traitor) {
-    const used = game.traitorStonesPlaced?.[seat.team - 1] ?? 0;
-    const total = game.config.variants.traitorStoneCount ?? 6;
-    lines.push(`TG: ${Math.max(0, total - used)}`);
+    if (game.config.variants.traitorMode === "percentage") {
+      lines.push(`TG: ${game.config.variants.traitorChance ?? 10}%`);
+    } else {
+      const used = game.traitorStonesPlaced?.[seat.team - 1] ?? 0;
+      const total = game.config.variants.traitorStoneCount ?? 6;
+      lines.push(`TG: ${Math.max(0, total - used)}`);
+    }
   }
   return lines.join("<br />");
 }
@@ -3001,6 +3022,57 @@ function isThemePreference(value) {
   return value === "system" || value === "light" || value === "dark";
 }
 
+// client/game/countdown.ts
+function countdownAudioPath(sound, seconds) {
+  return Number.isInteger(seconds) && seconds >= 1 && seconds <= 10 ? `/countdown/${sound}/${seconds}.aac` : void 0;
+}
+function countdownCue(game, now = Date.now()) {
+  const time = game.config.time;
+  const activeSeat = game.seats[game.turn];
+  if (game.phase !== "play" || !time || time.system === "none" || game.config.variants?.zen || game.clockUpdatedAt === void 0 || !activeSeat) return void 0;
+  const seatTime = activeSeat.time ?? activeSeat.clock ?? {};
+  const mainLeft = Math.max(0, Number(seatTime.mainLeft ?? seatTime.main ?? time.main ?? 0));
+  const elapsed = Math.max(0, (now - game.clockUpdatedAt) / 1e3);
+  if (time.system === "fischer") {
+    const remaining2 = mainLeft - elapsed;
+    return timeoutCue(game, remaining2) ?? cueForRemaining(game, remaining2, "main");
+  }
+  if (time.system !== "byoyomi") return void 0;
+  if (elapsed < mainLeft) return cueForRemaining(game, mainLeft - elapsed, "main");
+  const periodsLeft = Math.max(0, Math.floor(Number(seatTime.periodsLeft ?? seatTime.periods ?? time.periods ?? 0)));
+  const firstPeriod = Math.max(0, Number(seatTime.periodLeft ?? seatTime.periodTime ?? time.periodTime ?? 0));
+  const periodTime = Math.max(0, Number(time.periodTime ?? firstPeriod));
+  if (periodsLeft === 0 || firstPeriod === 0) return void 0;
+  const overtimeElapsed = elapsed - mainLeft;
+  const overtimeRemaining = firstPeriod + Math.max(0, periodsLeft - 1) * periodTime - overtimeElapsed;
+  const timeout = timeoutCue(game, overtimeRemaining);
+  if (timeout) return timeout;
+  if (overtimeElapsed < firstPeriod) {
+    return cueForRemaining(game, firstPeriod - overtimeElapsed, "period-0");
+  }
+  if (periodTime === 0) return void 0;
+  const laterElapsed = overtimeElapsed - firstPeriod;
+  const laterPeriod = Math.floor(laterElapsed / periodTime) + 1;
+  if (laterPeriod >= periodsLeft) return void 0;
+  const remaining = periodTime - laterElapsed % periodTime;
+  return cueForRemaining(game, remaining, `period-${laterPeriod}`);
+}
+function cueForRemaining(game, remaining, clockSegment) {
+  if (!(remaining >= 1 && remaining < 11)) return void 0;
+  const seconds = Math.floor(remaining);
+  return {
+    seconds,
+    key: `${game.id}:${game.turn}:${game.clockUpdatedAt}:${clockSegment}:${seconds}`
+  };
+}
+function timeoutCue(game, remaining) {
+  if (!(remaining <= 0 && remaining > -1)) return void 0;
+  return {
+    seconds: 0,
+    key: `${game.id}:${game.turn}:${game.clockUpdatedAt}:timeout`
+  };
+}
+
 // client/main.ts
 var statusElement = document.querySelector("#status");
 var nameForm = document.querySelector("#name-form");
@@ -3010,26 +3082,38 @@ var listElement = document.querySelector("#game-list");
 var shell = document.querySelector(".shell");
 var themeToggle = document.querySelector("#theme-toggle");
 var coordinateToggle = document.querySelector("#coordinate-toggle");
+var stoneShadowToggle = document.querySelector("#stone-shadow-toggle");
 var soundControl = document.querySelector("#sound-control");
 var soundToggle = document.querySelector("#sound-toggle");
 var soundPopover = document.querySelector("#sound-popover");
-var soundVolume = document.querySelector("#sound-volume");
+var stoneVolume = document.querySelector("#stone-volume");
+var voiceVolume = document.querySelector("#voice-volume");
+var countdownSound = document.querySelector("#countdown-sound");
 var appRemake = document.querySelector("#app-remake");
 var appHelp = document.querySelector("#app-help");
-var stoneSound = createSound("/clack.mp3");
-var captureSound = createSound("/capture.mp3");
-var passSound = createSound("/pass.mp3");
-if (soundVolume) soundVolume.value = String(stoneSound.volume);
+var stoneSound = createSound("/clack.mp3", readSavedStoneVolume());
+var captureSound = createSound("/capture.mp3", readSavedStoneVolume());
+var passSound = createSound("/pass.mp3", readSavedStoneVolume());
+var voiceCountdownSounds = {
+  english: createCountdownVoiceSounds("english"),
+  chinese: createCountdownVoiceSounds("chinese")
+};
+var countdownBeep = createSound("/CountdownBeep.mp3", readSavedVoiceVolume());
+if (stoneVolume) stoneVolume.value = String(stoneSound.volume);
+if (voiceVolume) voiceVolume.value = String(countdownBeep.volume);
+if (countdownSound) countdownSound.value = readSavedCountdownSound();
 var createGamePanelHtml = panel.innerHTML;
 var session;
 var socketState = {};
 var gameEvents;
 var gameClockTimer;
+var lastCountdownCueKey;
 var historyKeyController;
 var nameSaveTimer;
 var lastSavedName = "";
 var currentGame;
 var showCoordinates = localStorage.getItem("baduk:show-coordinates") === "true" && !matchMedia("(max-width: 759px)").matches;
+var showStoneShadows = localStorage.getItem("baduk:stone-shadows") !== "false";
 if (!showCoordinates && matchMedia("(max-width: 759px)").matches) {
   localStorage.setItem("baduk:show-coordinates", "false");
 }
@@ -3037,6 +3121,7 @@ var historyViewByGame = /* @__PURE__ */ new Map();
 applySavedTheme();
 updateThemeToggle(themeToggle);
 updateCoordinateToggle();
+updateStoneShadowToggle();
 var landingHelpBody = document.querySelector("[data-landing-help-body]");
 if (landingHelpBody) landingHelpBody.innerHTML = allVariantRulesHelpHtml();
 appRemake?.addEventListener("click", remakeCurrentGame);
@@ -3056,14 +3141,25 @@ listElement.addEventListener("wheel", (event) => {
 });
 themeToggle?.addEventListener("click", () => toggleTheme(themeToggle));
 coordinateToggle?.addEventListener("click", toggleCoordinates);
+stoneShadowToggle?.addEventListener("click", toggleStoneShadows);
 soundToggle?.addEventListener("click", (event) => {
   event.stopPropagation();
   toggleSoundPopover();
 });
 soundControl?.addEventListener("click", (event) => event.stopPropagation());
-soundVolume?.addEventListener("input", () => {
-  setSoundVolume(Number(soundVolume.value));
-  localStorage.setItem("baduk:sound-volume", soundVolume.value);
+stoneVolume?.addEventListener("input", () => {
+  setStoneVolume(Number(stoneVolume.value));
+  localStorage.setItem("baduk:stone-volume", stoneVolume.value);
+});
+voiceVolume?.addEventListener("input", () => {
+  setVoiceVolume(Number(voiceVolume.value));
+  localStorage.setItem("baduk:voice-volume", voiceVolume.value);
+});
+countdownSound?.addEventListener("change", () => {
+  localStorage.setItem("baduk:countdown-sound", readCountdownSoundSelection());
+  lastCountdownCueKey = void 0;
+  stopCountdownAudio();
+  if (currentGame) maybePlayCountdown(currentGame);
 });
 document.addEventListener("click", closeSoundPopover);
 async function boot() {
@@ -3170,6 +3266,9 @@ window.addEventListener("resize", () => {
 });
 function showCreateScreen(push = true) {
   currentGame = void 0;
+  if (appRemake) appRemake.hidden = true;
+  lastCountdownCueKey = void 0;
+  stopCountdownAudio();
   disconnectGameSocket(socketState);
   historyKeyController?.abort();
   shell.classList.remove("game-layout", "desktop-fit");
@@ -3202,7 +3301,15 @@ function renderGame(game) {
   const josekiSelectionWasOpen = josekiSelectionDialog?.open ?? false;
   const josekiSelectionScrollTop = josekiSelectionDialog?.scrollTop ?? 0;
   maybePlayStoneSound(currentGame, game);
+  if (game.phase !== "play") {
+    stopCountdownAudio();
+    lastCountdownCueKey = void 0;
+  } else if (currentGame && (currentGame.id !== game.id || currentGame.turn !== game.turn || currentGame.clockUpdatedAt !== game.clockUpdatedAt)) {
+    stopCountdownAudio();
+  }
   currentGame = game;
+  if (appRemake) appRemake.hidden = false;
+  maybePlayCountdown(game);
   clearTimeout(gameClockTimer);
   shell.classList.add("game-layout");
   updateGameLayoutMode(shell);
@@ -3256,16 +3363,25 @@ function renderGame(game) {
     nextJosekiSelectionDialog.scrollTop = josekiSelectionScrollTop;
   }
   if (game.phase === "play" && game.clockUpdatedAt !== void 0 && game.config.time?.system && game.config.time.system !== "none") {
-    gameClockTimer = setTimeout(() => renderGame(game), 1e3);
+    gameClockTimer = setTimeout(() => updateGameClock(game), 1e3);
   }
 }
-function createSound(src) {
+function createSound(src, volume) {
   const sound = new Audio(src);
   sound.preload = "auto";
-  sound.volume = readSavedSoundVolume();
+  sound.volume = volume;
   return sound;
 }
-function setSoundVolume(volume) {
+function createCountdownVoiceSounds(voice) {
+  return Array.from({
+    length: 10
+  }, (_, index) => {
+    const src = countdownAudioPath(voice, index + 1);
+    if (!src) throw new Error(`Missing ${voice} countdown audio path`);
+    return createSound(src, readSavedVoiceVolume());
+  });
+}
+function setStoneVolume(volume) {
   const safeVolume = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.5;
   for (const sound of [
     stoneSound,
@@ -3273,9 +3389,32 @@ function setSoundVolume(volume) {
     passSound
   ]) sound.volume = safeVolume;
 }
-function readSavedSoundVolume() {
-  const saved = Number(localStorage.getItem("baduk:sound-volume") ?? "0.5");
+function setVoiceVolume(volume) {
+  const safeVolume = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.5;
+  for (const sound of [
+    ...voiceCountdownSounds.english,
+    ...voiceCountdownSounds.chinese,
+    countdownBeep
+  ]) sound.volume = safeVolume;
+}
+function readSavedStoneVolume() {
+  return readSavedVolume("baduk:stone-volume");
+}
+function readSavedVoiceVolume() {
+  return readSavedVolume("baduk:voice-volume");
+}
+function readSavedVolume(key) {
+  const saved = Number(localStorage.getItem(key) ?? localStorage.getItem("baduk:sound-volume") ?? "0.5");
   return Number.isFinite(saved) ? Math.min(1, Math.max(0, saved)) : 0.5;
+}
+function readSavedCountdownSound() {
+  return parseCountdownSound(localStorage.getItem("baduk:countdown-sound"));
+}
+function readCountdownSoundSelection() {
+  return parseCountdownSound(countdownSound?.value);
+}
+function parseCountdownSound(value) {
+  return value === "chinese" || value === "beep" || value === "off" ? value : "english";
 }
 function toggleSoundPopover() {
   if (!soundPopover || !soundToggle) return;
@@ -3302,6 +3441,53 @@ function maybePlayStoneSound(previous, next) {
     return;
   }
   if ((next.playMoves ?? 0) > (previous.playMoves ?? 0)) playSound(stoneSound);
+}
+function maybePlayCountdown(game) {
+  const selectedSound = readCountdownSoundSelection();
+  if (selectedSound === "off") return;
+  const cue = countdownCue(game);
+  if (!cue || cue.key === lastCountdownCueKey) return;
+  lastCountdownCueKey = cue.key;
+  if (selectedSound === "beep" || cue.seconds === 0) {
+    playCountdownSound(countdownBeep);
+    return;
+  }
+  const audio = voiceCountdownSounds[selectedSound][cue.seconds - 1];
+  if (!audio) return;
+  playCountdownSound(audio);
+}
+function playCountdownSound(audio) {
+  stopCountdownAudio();
+  playSound(audio);
+}
+function stopCountdownAudio() {
+  const countdownSounds = [
+    ...voiceCountdownSounds.english,
+    ...voiceCountdownSounds.chinese,
+    countdownBeep
+  ];
+  for (const audio of countdownSounds) {
+    audio.pause();
+    audio.currentTime = 0;
+  }
+}
+function updateGameClock(game) {
+  if (currentGame !== game) return;
+  const previousPhase = game.phase;
+  maybePlayCountdown(game);
+  for (const clock of panel.querySelectorAll(".seat-time")) {
+    const seatId = clock.closest("[data-seat-id]")?.dataset.seatId;
+    const team = Number(clock.closest(".team-card[data-team]")?.dataset.team);
+    const seat = seatId ? game.seats.find((candidate) => candidate.id === seatId) : Number.isInteger(team) ? game.seats.find((candidate, index) => candidate.team === team && index === game.turn) ?? game.seats.find((candidate) => candidate.team === team) : void 0;
+    if (seat) clock.innerHTML = seatMetaHtml(game, seat);
+  }
+  if (game.phase !== previousPhase) {
+    renderGame(game);
+    return;
+  }
+  if (game.phase === "play" && game.clockUpdatedAt !== void 0) {
+    gameClockTimer = setTimeout(() => updateGameClock(game), 1e3);
+  }
 }
 function playSound(sound) {
   sound.currentTime = 0;
@@ -3333,6 +3519,16 @@ function toggleCoordinates() {
 function updateCoordinateToggle() {
   coordinateToggle?.setAttribute("aria-pressed", String(showCoordinates));
   coordinateToggle?.classList.toggle("is-confirmed", showCoordinates);
+}
+function toggleStoneShadows() {
+  showStoneShadows = !showStoneShadows;
+  localStorage.setItem("baduk:stone-shadows", String(showStoneShadows));
+  updateStoneShadowToggle();
+}
+function updateStoneShadowToggle() {
+  document.documentElement.dataset.stoneShadows = showStoneShadows ? "on" : "off";
+  stoneShadowToggle?.setAttribute("aria-pressed", String(showStoneShadows));
+  stoneShadowToggle?.classList.toggle("is-confirmed", showStoneShadows);
 }
 async function sendAction(gameId, action) {
   await sendGameAction(gameId, action, statusElement, renderGame, renderGameList2, socketState);

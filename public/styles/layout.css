@@ -45,10 +45,15 @@
   display: inline-block;
 }
 
+.app-remake[hidden] {
+  display: none;
+}
+
 .app-back,
 .app-help,
 .theme-toggle,
 .coordinate-toggle,
+.stone-shadow-toggle,
 .sound-toggle {
   background: transparent;
   color: var(--button-text);
@@ -72,9 +77,24 @@
   z-index: 30;
 }
 
+.sound-popover label {
+  display: grid;
+  font-size: 0.8rem;
+  gap: 0.2rem;
+}
+
+.sound-popover label + label {
+  margin-top: 0.55rem;
+}
+
 .sound-popover input {
   display: block;
+  padding: 0;
   width: 9rem;
+}
+
+.sound-popover select {
+  min-width: 9rem;
 }
 
 h1,

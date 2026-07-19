@@ -10,7 +10,7 @@ import { remakeConfig, sendGameAction } from "./game/actions.ts";
 import { gameConfigFromFormData } from "./create/config.ts";
 import { bindCreateGameForm as bindCreateGameFormControls } from "./create/form-bind.ts";
 import { invalidVariantComboMessage } from "./create/form.ts";
-import { winnerText } from "./game/display.ts";
+import { seatMetaHtml, winnerText } from "./game/display.ts";
 import { bindGameEvents } from "./game/events.ts";
 import { gameViewHtml } from "./game/render.ts";
 import {
@@ -30,6 +30,12 @@ import {
 } from "./game/realtime.ts";
 import { applySavedTheme, toggleTheme, updateThemeToggle } from "./ui/theme.ts";
 import { allVariantRulesHelpHtml } from "./game/variants.ts";
+import {
+  countdownAudioPath,
+  countdownCue,
+  type CountdownSound,
+  type CountdownVoice,
+} from "./game/countdown.ts";
 import type { Game, GameAction, Session } from "./types/domain.ts";
 
 const statusElement = document.querySelector<HTMLElement>("#status")!;
@@ -40,28 +46,40 @@ const listElement = document.querySelector<HTMLElement>("#game-list")!;
 const shell = document.querySelector<HTMLElement>(".shell")!;
 const themeToggle = document.querySelector<HTMLElement>("#theme-toggle");
 const coordinateToggle = document.querySelector<HTMLButtonElement>("#coordinate-toggle");
+const stoneShadowToggle = document.querySelector<HTMLButtonElement>("#stone-shadow-toggle");
 const soundControl = document.querySelector<HTMLElement>("#sound-control");
 const soundToggle = document.querySelector<HTMLButtonElement>("#sound-toggle");
 const soundPopover = document.querySelector<HTMLElement>("#sound-popover");
-const soundVolume = document.querySelector<HTMLInputElement>("#sound-volume");
+const stoneVolume = document.querySelector<HTMLInputElement>("#stone-volume");
+const voiceVolume = document.querySelector<HTMLInputElement>("#voice-volume");
+const countdownSound = document.querySelector<HTMLSelectElement>("#countdown-sound");
 const appRemake = document.querySelector<HTMLElement>("#app-remake");
 const appHelp = document.querySelector<HTMLElement>("#app-help");
-const stoneSound = createSound("/clack.mp3");
-const captureSound = createSound("/capture.mp3");
-const passSound = createSound("/pass.mp3");
-if (soundVolume) soundVolume.value = String(stoneSound.volume);
+const stoneSound = createSound("/clack.mp3", readSavedStoneVolume());
+const captureSound = createSound("/capture.mp3", readSavedStoneVolume());
+const passSound = createSound("/pass.mp3", readSavedStoneVolume());
+const voiceCountdownSounds = {
+  english: createCountdownVoiceSounds("english"),
+  chinese: createCountdownVoiceSounds("chinese"),
+};
+const countdownBeep = createSound("/CountdownBeep.mp3", readSavedVoiceVolume());
+if (stoneVolume) stoneVolume.value = String(stoneSound.volume);
+if (voiceVolume) voiceVolume.value = String(countdownBeep.volume);
+if (countdownSound) countdownSound.value = readSavedCountdownSound();
 const createGamePanelHtml = panel.innerHTML;
 
 let session: Session | undefined;
 const socketState: { socket?: WebSocket; gameId?: string | number } = {};
 let gameEvents: EventSource | undefined;
 let gameClockTimer: ReturnType<typeof setTimeout> | undefined;
+let lastCountdownCueKey: string | undefined;
 let historyKeyController: AbortController | undefined;
 let nameSaveTimer: ReturnType<typeof setTimeout> | undefined;
 let lastSavedName = "";
 let currentGame: Game | undefined;
 let showCoordinates = localStorage.getItem("baduk:show-coordinates") === "true" &&
   !matchMedia("(max-width: 759px)").matches;
+let showStoneShadows = localStorage.getItem("baduk:stone-shadows") !== "false";
 if (!showCoordinates && matchMedia("(max-width: 759px)").matches) {
   localStorage.setItem("baduk:show-coordinates", "false");
 }
@@ -70,6 +88,7 @@ const historyViewByGame = new Map<Game["id"], number>();
 applySavedTheme();
 updateThemeToggle(themeToggle);
 updateCoordinateToggle();
+updateStoneShadowToggle();
 const landingHelpBody = document.querySelector<HTMLElement>("[data-landing-help-body]");
 if (landingHelpBody) landingHelpBody.innerHTML = allVariantRulesHelpHtml();
 
@@ -98,14 +117,25 @@ listElement.addEventListener("wheel", (event: WheelEvent) => {
 
 themeToggle?.addEventListener("click", () => toggleTheme(themeToggle));
 coordinateToggle?.addEventListener("click", toggleCoordinates);
+stoneShadowToggle?.addEventListener("click", toggleStoneShadows);
 soundToggle?.addEventListener("click", (event) => {
   event.stopPropagation();
   toggleSoundPopover();
 });
 soundControl?.addEventListener("click", (event) => event.stopPropagation());
-soundVolume?.addEventListener("input", () => {
-  setSoundVolume(Number(soundVolume.value));
-  localStorage.setItem("baduk:sound-volume", soundVolume.value);
+stoneVolume?.addEventListener("input", () => {
+  setStoneVolume(Number(stoneVolume.value));
+  localStorage.setItem("baduk:stone-volume", stoneVolume.value);
+});
+voiceVolume?.addEventListener("input", () => {
+  setVoiceVolume(Number(voiceVolume.value));
+  localStorage.setItem("baduk:voice-volume", voiceVolume.value);
+});
+countdownSound?.addEventListener("change", () => {
+  localStorage.setItem("baduk:countdown-sound", readCountdownSoundSelection());
+  lastCountdownCueKey = undefined;
+  stopCountdownAudio();
+  if (currentGame) maybePlayCountdown(currentGame);
 });
 document.addEventListener("click", closeSoundPopover);
 
@@ -222,6 +252,9 @@ window.addEventListener("resize", () => {
 
 function showCreateScreen(push = true) {
   currentGame = undefined;
+  if (appRemake) appRemake.hidden = true;
+  lastCountdownCueKey = undefined;
+  stopCountdownAudio();
   disconnectGameSocket(socketState);
   historyKeyController?.abort();
   shell.classList.remove("game-layout", "desktop-fit");
@@ -260,7 +293,19 @@ function renderGame(game: Game) {
   const josekiSelectionWasOpen = josekiSelectionDialog?.open ?? false;
   const josekiSelectionScrollTop = josekiSelectionDialog?.scrollTop ?? 0;
   maybePlayStoneSound(currentGame, game);
+  if (game.phase !== "play") {
+    stopCountdownAudio();
+    lastCountdownCueKey = undefined;
+  } else if (
+    currentGame &&
+    (currentGame.id !== game.id || currentGame.turn !== game.turn ||
+      currentGame.clockUpdatedAt !== game.clockUpdatedAt)
+  ) {
+    stopCountdownAudio();
+  }
   currentGame = game;
+  if (appRemake) appRemake.hidden = false;
+  maybePlayCountdown(game);
   clearTimeout(gameClockTimer);
   shell.classList.add("game-layout");
   updateGameLayoutMode(shell);
@@ -334,25 +379,66 @@ function renderGame(game: Game) {
     game.phase === "play" && game.clockUpdatedAt !== undefined && game.config.time?.system &&
     game.config.time.system !== "none"
   ) {
-    gameClockTimer = setTimeout(() => renderGame(game), 1000);
+    gameClockTimer = setTimeout(() => updateGameClock(game), 1000);
   }
 }
 
-function createSound(src: string): HTMLAudioElement {
+function createSound(src: string, volume: number): HTMLAudioElement {
   const sound = new Audio(src);
   sound.preload = "auto";
-  sound.volume = readSavedSoundVolume();
+  sound.volume = volume;
   return sound;
 }
 
-function setSoundVolume(volume: number): void {
+function createCountdownVoiceSounds(voice: CountdownVoice): HTMLAudioElement[] {
+  return Array.from({ length: 10 }, (_, index) => {
+    const src = countdownAudioPath(voice, index + 1);
+    if (!src) throw new Error(`Missing ${voice} countdown audio path`);
+    return createSound(src, readSavedVoiceVolume());
+  });
+}
+
+function setStoneVolume(volume: number): void {
   const safeVolume = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.5;
   for (const sound of [stoneSound, captureSound, passSound]) sound.volume = safeVolume;
 }
 
-function readSavedSoundVolume(): number {
-  const saved = Number(localStorage.getItem("baduk:sound-volume") ?? "0.5");
+function setVoiceVolume(volume: number): void {
+  const safeVolume = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.5;
+  for (
+    const sound of [
+      ...voiceCountdownSounds.english,
+      ...voiceCountdownSounds.chinese,
+      countdownBeep,
+    ]
+  ) sound.volume = safeVolume;
+}
+
+function readSavedStoneVolume(): number {
+  return readSavedVolume("baduk:stone-volume");
+}
+
+function readSavedVoiceVolume(): number {
+  return readSavedVolume("baduk:voice-volume");
+}
+
+function readSavedVolume(key: string): number {
+  const saved = Number(
+    localStorage.getItem(key) ?? localStorage.getItem("baduk:sound-volume") ?? "0.5",
+  );
   return Number.isFinite(saved) ? Math.min(1, Math.max(0, saved)) : 0.5;
+}
+
+function readSavedCountdownSound(): CountdownSound {
+  return parseCountdownSound(localStorage.getItem("baduk:countdown-sound"));
+}
+
+function readCountdownSoundSelection(): CountdownSound {
+  return parseCountdownSound(countdownSound?.value);
+}
+
+function parseCountdownSound(value: string | null | undefined): CountdownSound {
+  return value === "chinese" || value === "beep" || value === "off" ? value : "english";
 }
 
 function toggleSoundPopover(): void {
@@ -382,6 +468,66 @@ function maybePlayStoneSound(previous: Game | undefined, next: Game): void {
     return;
   }
   if ((next.playMoves ?? 0) > (previous.playMoves ?? 0)) playSound(stoneSound);
+}
+
+function maybePlayCountdown(game: Game): void {
+  const selectedSound = readCountdownSoundSelection();
+  if (selectedSound === "off") return;
+  const cue = countdownCue(game);
+  if (!cue || cue.key === lastCountdownCueKey) return;
+  lastCountdownCueKey = cue.key;
+
+  if (selectedSound === "beep" || cue.seconds === 0) {
+    playCountdownSound(countdownBeep);
+    return;
+  }
+
+  const audio = voiceCountdownSounds[selectedSound][cue.seconds - 1];
+  if (!audio) return;
+  playCountdownSound(audio);
+}
+
+function playCountdownSound(audio: HTMLAudioElement): void {
+  stopCountdownAudio();
+  playSound(audio);
+}
+
+function stopCountdownAudio(): void {
+  const countdownSounds = [
+    ...voiceCountdownSounds.english,
+    ...voiceCountdownSounds.chinese,
+    countdownBeep,
+  ];
+  for (const audio of countdownSounds) {
+    audio.pause();
+    audio.currentTime = 0;
+  }
+}
+
+function updateGameClock(game: Game): void {
+  if (currentGame !== game) return;
+  const previousPhase = game.phase;
+  maybePlayCountdown(game);
+
+  for (const clock of panel.querySelectorAll<HTMLElement>(".seat-time")) {
+    const seatId = clock.closest<HTMLElement>("[data-seat-id]")?.dataset.seatId;
+    const team = Number(clock.closest<HTMLElement>(".team-card[data-team]")?.dataset.team);
+    const seat = seatId
+      ? game.seats.find((candidate) => candidate.id === seatId)
+      : Number.isInteger(team)
+      ? game.seats.find((candidate, index) => candidate.team === team && index === game.turn) ??
+        game.seats.find((candidate) => candidate.team === team)
+      : undefined;
+    if (seat) clock.innerHTML = seatMetaHtml(game, seat);
+  }
+
+  if (game.phase !== previousPhase) {
+    renderGame(game);
+    return;
+  }
+  if (game.phase === "play" && game.clockUpdatedAt !== undefined) {
+    gameClockTimer = setTimeout(() => updateGameClock(game), 1000);
+  }
 }
 
 function playSound(sound: HTMLAudioElement): void {
@@ -417,6 +563,18 @@ function toggleCoordinates() {
 function updateCoordinateToggle() {
   coordinateToggle?.setAttribute("aria-pressed", String(showCoordinates));
   coordinateToggle?.classList.toggle("is-confirmed", showCoordinates);
+}
+
+function toggleStoneShadows(): void {
+  showStoneShadows = !showStoneShadows;
+  localStorage.setItem("baduk:stone-shadows", String(showStoneShadows));
+  updateStoneShadowToggle();
+}
+
+function updateStoneShadowToggle(): void {
+  document.documentElement.dataset.stoneShadows = showStoneShadows ? "on" : "off";
+  stoneShadowToggle?.setAttribute("aria-pressed", String(showStoneShadows));
+  stoneShadowToggle?.classList.toggle("is-confirmed", showStoneShadows);
 }
 
 async function sendAction(gameId: string | number, action: GameAction) {

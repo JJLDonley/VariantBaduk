@@ -208,10 +208,10 @@
     column-gap: 1.5rem;
     grid-template-columns:
       clamp(
-        var(--game-list-inline-size-min),
-        var(--game-list-inline-size-preferred),
-        var(--game-list-inline-size)
-      ) minmax(0, 1fr);
+      var(--game-list-inline-size-min),
+      var(--game-list-inline-size-preferred),
+      var(--game-list-inline-size)
+    ) minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     justify-content: stretch;
     height: 100svh;
@@ -557,8 +557,8 @@
   .shell.game-layout.desktop-fit {
     grid-template-columns:
       var(--game-list-inline-size) minmax(0, 1fr) var(--sidebar-inline-size) var(
-        --metadata-inline-size
-      );
+      --metadata-inline-size
+    );
     gap: 1rem;
     padding: max(1rem, env(safe-area-inset-top)) 1rem max(2rem, env(safe-area-inset-bottom));
   }
@@ -751,9 +751,14 @@
 
   .shell:not(.game-layout) .core-settings {
     align-content: start;
-    align-self: start;
+    align-self: stretch;
     grid-column: 1;
     grid-row: 1 / -1;
+    max-block-size: 100%;
+    min-block-size: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-block-end: var(--space-1);
   }
 
   .shell:not(.game-layout) .create-game-form > .form-divider {
@@ -822,7 +827,6 @@
 }
 
 @media (min-width: 1100px) {
-  .shell:not(.game-layout) .core-settings,
   .shell:not(.game-layout) .variant-options {
     max-block-size: calc(100svh - 8rem);
     min-block-size: 0;

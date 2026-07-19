@@ -31,11 +31,31 @@
             class="app-back app-remake"
             data-tooltip="Forking game settings"
             type="button"
+            aria-label="Fork game settings"
+            hidden
           >
-            fork
+            <svg
+              class="header-action-icon"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+              <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>
+            </svg>
           </button>
           <button id="app-help" class="app-help" type="button" aria-label="Show help">
-            about
+            <svg
+              class="header-action-icon"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <circle cx="12" cy="12" r="3"></circle>
+              <path
+                d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09A1.7 1.7 0 0 0 9 19.35a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.07 14H3v-4h.09A1.7 1.7 0 0 0 4.65 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63a1.7 1.7 0 0 0 1-1.56V3h4v.09A1.7 1.7 0 0 0 15 4.65a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9c.26.62.86 1.02 1.54 1.02H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"
+              ></path>
+            </svg>
           </button>
           <button
             id="coordinate-toggle"
@@ -45,6 +65,16 @@
             aria-pressed="false"
           >
             A1
+          </button>
+          <button
+            id="stone-shadow-toggle"
+            class="stone-shadow-toggle"
+            type="button"
+            aria-label="Stone shadows"
+            aria-pressed="true"
+            title="Stone shadows"
+          >
+            <span class="stone-shadow-toggle__stone" aria-hidden="true"></span>
           </button>
           <div id="sound-control" class="sound-control">
             <button
@@ -57,14 +87,37 @@
               🔊
             </button>
             <div id="sound-popover" class="sound-popover" hidden>
-              <input
-                id="sound-volume"
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                aria-label="Sound volume"
-              />
+              <label>
+                Stone volume
+                <input
+                  id="stone-volume"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  aria-label="Stone volume"
+                />
+              </label>
+              <label>
+                Voice volume
+                <input
+                  id="voice-volume"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  aria-label="Voice volume"
+                />
+              </label>
+              <label>
+                Countdown
+                <select id="countdown-sound" aria-label="Countdown sound">
+                  <option value="english">English</option>
+                  <option value="chinese">Chinese</option>
+                  <option value="beep">Beep</option>
+                  <option value="off">Off</option>
+                </select>
+              </label>
             </div>
           </div>
           <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Change theme">
@@ -357,7 +410,7 @@
                 </div>
               </div>
               <div class="variant-count-group" data-variant-count-group hidden>
-                <span class="variant-count-title">Count / Moves</span>
+                <span class="variant-count-title">Counts / Chance</span>
                 <div class="variant-count-row">
                   <label class="compact-variant-setting" data-variant-option="nPlusOne">
                     N+1
@@ -367,10 +420,34 @@
                     Hidden
                     <input name="hiddenMoveCount" type="number" min="1" max="20" value="3" />
                   </label>
-                  <label class="compact-variant-setting" data-variant-option="traitor">
-                    Traitor
-                    <input name="traitorMoveCount" type="number" min="1" value="6" />
-                  </label>
+                  <div class="compact-variant-setting" data-variant-option="traitor">
+                    <span>Traitor</span>
+                    <div class="traitor-setting-controls">
+                      <select name="traitorMode" aria-label="Traitor setting">
+                        <option value="moves">Moves</option>
+                        <option value="percentage">Chance %</option>
+                      </select>
+                      <input
+                        name="traitorMoveCount"
+                        type="number"
+                        min="1"
+                        value="6"
+                        aria-label="Traitor move count"
+                        data-traitor-mode-value="moves"
+                      />
+                      <input
+                        name="traitorChancePercent"
+                        type="number"
+                        min="1"
+                        max="100"
+                        value="10"
+                        aria-label="Traitor chance percentage"
+                        data-traitor-mode-value="percentage"
+                        hidden
+                        disabled
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
               <label data-variant-option="zen">

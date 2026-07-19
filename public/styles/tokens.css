@@ -60,6 +60,8 @@
   --control-border: var(--surface-border);
   --control-focus-ring: var(--color-focus-ring);
   --control-disabled-opacity: 0.55;
+  --board-shadow: rgb(58 34 14 / 32%);
+  --stone-shadow: rgb(35 24 12 / 38%);
   --button-bg: var(--control-bg);
   --button-text: var(--control-text);
   --button-border: var(--control-border);

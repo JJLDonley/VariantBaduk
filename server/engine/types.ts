@@ -138,7 +138,9 @@ export type RuleMods = {
   nPlusOne?: boolean;
   nPlusOneCount?: number;
   traitor?: boolean;
+  traitorMode?: "moves" | "percentage";
   traitorStoneCount?: number;
+  traitorChance?: number;
   randomTurn?: boolean;
   teamGo?: boolean;
   random?: () => number;

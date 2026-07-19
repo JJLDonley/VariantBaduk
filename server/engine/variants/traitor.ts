@@ -11,10 +11,13 @@ export function placementInfo(state: SharedState, mods: RuleMods): PlacementInfo
   const baseTeam = mods.zen ? zenTeam(state) : activeTeam;
   if (!mods.traitor) return { color: baseTeam, traitor: false };
 
+  const percentageMode = mods.traitorMode === "percentage";
   const quota = Math.max(1, Math.trunc(mods.traitorStoneCount ?? 1));
   const used = state.play.traitorStonesPlaced[activeTeam - 1] ?? 0;
-  const chance = traitorChance(state, activeTeam);
-  const isTraitor = used < quota && randomChance(state, mods) < chance;
+  const chance = percentageMode
+    ? Math.min(1, Math.max(0.01, (mods.traitorChance ?? 10) / 100))
+    : traitorChance(state, activeTeam);
+  const isTraitor = (percentageMode || used < quota) && randomChance(state, mods) < chance;
   return { color: isTraitor ? nextActiveTeam(state, baseTeam) : baseTeam, traitor: isTraitor };
 }
 
@@ -26,6 +29,12 @@ export function updateTraitorState(
 ): void {
   if (!mods.traitor) return;
   const index = activeTeam - 1;
+  if (mods.traitorMode === "percentage") {
+    if (placement.traitor) {
+      state.play.traitorStonesPlaced[index] = (state.play.traitorStonesPlaced[index] ?? 0) + 1;
+    }
+    return;
+  }
   const quota = Math.max(1, Math.trunc(mods.traitorStoneCount ?? 1));
   const used = state.play.traitorStonesPlaced[index] ?? 0;
   if (used >= quota) return;
