@@ -209,17 +209,9 @@
 }
 
 .team-seat-box {
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--team-color, var(--surface-border));
   border-radius: var(--radius-sm);
   padding: 0.5rem;
-}
-
-.team-seat-box[data-team="1"] {
-  border-color: var(--stone-black);
-}
-
-.team-seat-box[data-team="2"] {
-  border-color: var(--stone-white-border);
 }
 
 .seat {

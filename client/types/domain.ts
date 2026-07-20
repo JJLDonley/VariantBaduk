@@ -150,6 +150,7 @@ export type Game = {
   scoreAccepted?: boolean[];
   points: number[];
   winnerTeams?: number[];
+  endReason?: "resign" | "timeout" | "score";
   clockUpdatedAt?: number;
   traitorStonesPlaced?: number[];
   josekiSetup?: JosekiSetup;

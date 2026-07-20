@@ -5,6 +5,7 @@ import {
   updateColorGoKomiDefaults,
   updateCreatorSeatOptions,
   updateRuleDefaults,
+  updateTeamColorNames,
   updateTimeOptions,
   updateVariantOptions,
 } from "./form.ts";
@@ -50,6 +51,12 @@ export function bindCreateGameForm(
   for (const input of root.querySelectorAll("[name^='teamGoSeats']")) {
     input.addEventListener("input", updateCreatorSeatOptions);
   }
+  for (const input of root.querySelectorAll("[name^='colorGoColor']")) {
+    input.addEventListener("input", () => {
+      updateTeamColorNames(root);
+      updateCreatorSeatOptions();
+    });
+  }
   root.querySelector(".custom-goban-open")?.addEventListener(
     "click",
     () => openCustomGobanEditor(statusElement),
@@ -75,6 +82,7 @@ export function refreshCreateGameForm(): void {
   updateTimeOptions();
   updateRuleDefaults();
   updateBoardSizeButtons();
+  updateTeamColorNames();
   updateVariantOptions();
   updateCreatorSeatOptions();
   refreshCustomGobanPresetButtons();

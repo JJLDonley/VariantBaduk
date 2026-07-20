@@ -65,6 +65,33 @@ export function countdownCue(game: Game, now = Date.now()): CountdownCue | undef
   return cueForRemaining(game, remaining, `period-${laterPeriod}`);
 }
 
+export function activeClockExpired(game: Game, now = Date.now()): boolean {
+  const time = game.config.time;
+  const activeSeat = game.seats[game.turn];
+  if (
+    game.phase !== "play" || !time || time.system === "none" ||
+    game.config.variants?.zen || game.clockUpdatedAt === undefined || !activeSeat
+  ) return false;
+
+  const seatTime = activeSeat.time ?? activeSeat.clock ?? {};
+  const mainLeft = Math.max(0, Number(seatTime.mainLeft ?? seatTime.main ?? time.main ?? 0));
+  const elapsed = Math.max(0, (now - game.clockUpdatedAt) / 1000);
+  if (time.system === "fischer") return elapsed >= mainLeft + 1;
+  if (time.system !== "byoyomi") return false;
+
+  const periodsLeft = Math.max(
+    0,
+    Math.floor(Number(seatTime.periodsLeft ?? seatTime.periods ?? time.periods ?? 0)),
+  );
+  const firstPeriod = Math.max(
+    0,
+    Number(seatTime.periodLeft ?? seatTime.periodTime ?? time.periodTime ?? 0),
+  );
+  const periodTime = Math.max(0, Number(time.periodTime ?? firstPeriod));
+  const secondsUntilLoss = mainLeft + firstPeriod + Math.max(0, periodsLeft - 1) * periodTime;
+  return elapsed >= secondsUntilLoss + 1;
+}
+
 function cueForRemaining(
   game: Game,
   remaining: number,

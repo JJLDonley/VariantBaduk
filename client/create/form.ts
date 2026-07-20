@@ -1,3 +1,5 @@
+import { nearestColorName } from "../ui/color-names.ts";
+
 type SeatOption = { value: string; label: string };
 
 export function selectBoardSizeOption(event: Event): void {
@@ -82,7 +84,11 @@ function teamGoSeatOptions(): SeatOption[] {
   const teamCount = colorGoEnabled
     ? Number(document.querySelector<HTMLInputElement>("[name='colorGoPlayerCount']")?.value ?? 3)
     : 2;
-  const labels = ["Black", "White", "Green", "Red"].slice(0, teamCount);
+  const labels = Array.from({ length: teamCount }, (_, index) => {
+    const color = document.querySelector<HTMLInputElement>(`[name='colorGoColor${index + 1}']`)
+      ?.value;
+    return nearestColorName(color ?? "#111111");
+  });
   const options = labels.flatMap((label, teamIndex) => {
     const count = Number(
       document.querySelector<HTMLInputElement>(`[name='teamGoSeats${teamIndex + 1}']`)?.value ?? 0,
@@ -116,6 +122,19 @@ export function updateColorGoKomiDefaults(): void {
   }
 }
 
+export function updateTeamColorNames(root: ParentNode = document): void {
+  for (let team = 1; team <= 4; team++) {
+    const input = root.querySelector<HTMLInputElement>(`[name='colorGoColor${team}']`);
+    if (!input) continue;
+    const name = nearestColorName(input.value);
+    const heading = root.querySelector<HTMLElement>(`[data-team-color-name='${team}']`);
+    if (heading) heading.textContent = name;
+    const label = root.querySelector<HTMLElement>(`[data-team-color-label='${team}']`);
+    label?.setAttribute("aria-label", `${name} color`);
+    input.title = name;
+  }
+}
+
 export function updateTimeOptions(): void {
   const selected = document.querySelector<HTMLInputElement>("[name='timeSystem']")?.value ?? "none";
   for (const option of document.querySelectorAll<HTMLElement>("[data-time-option]")) {
@@ -137,6 +156,7 @@ export function updateRuleDefaults(): void {
 }
 
 export function updateVariantOptions(): void {
+  updateTeamColorNames();
   updateVariantConflicts();
   updateBoardSizeButtons();
   const colorGoEnabled = document.querySelector<HTMLInputElement>("[name='colorGo']")?.checked;

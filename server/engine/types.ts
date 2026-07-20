@@ -95,6 +95,7 @@ export type PlayState = {
   noScorePoints?: boolean[];
   scoreAccepted?: boolean[];
   winnerTeams?: number[];
+  endReason?: "resign" | "timeout" | "score";
 };
 
 export type BoardHistory = {

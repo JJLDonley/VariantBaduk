@@ -1,5 +1,11 @@
 import { escapeHtml, short } from "../ui/format.ts";
-import { activeStoneHtml, seatDisplayTeam, seatMetaHtml, stoneColor } from "./display.ts";
+import {
+  activeStoneHtml,
+  seatDisplayTeam,
+  seatMetaHtml,
+  stoneColor,
+  teamColorName,
+} from "./display.ts";
 import type { Game, Seat, Session } from "../types/domain.ts";
 
 export function usersColumnHtml(game: Game): string {
@@ -28,7 +34,7 @@ function teamColorPlayerListsHtml(game: Game): string {
       <div class="team-users" data-team="${team}">
         <h4><i class="color-dot" data-team="${team}" style="--stone-color: ${
       stoneColor(game, team)
-    }"></i>${teamLabel(team)}</h4>
+    }"></i>${escapeHtml(teamColorName(game, team))}</h4>
         <div class="team-users__players">${players}</div>
       </div>
     `;
@@ -52,7 +58,9 @@ export function teamSeatsHtml(game: Game, session: Session | undefined): string 
       .filter(({ seat }) => seat.team === team);
     if (game.config.variants?.teamGo) return teamSeatCardHtml(game, team, seats, session);
     return `
-      <div class="team-seat-box" data-team="${team}">
+      <div class="team-seat-box" data-team="${team}" style="--team-color: ${
+      stoneColor(game, team)
+    }">
         <div class="team-seat-list">
           ${seats.map(({ seat, index }) => playerSeatHtml(game, seat, index, session)).join("")}
         </div>
@@ -70,7 +78,9 @@ function teamSeatCardHtml(
   const active = seats.find(({ index }) => index === game.turn);
   const clockSeat = active?.seat ?? seats[0]?.seat;
   return `
-    <div class="team-seat-box team-card" data-team="${team}">
+    <div class="team-seat-box team-card" data-team="${team}" style="--team-color: ${
+    stoneColor(game, team)
+  }">
       <div class="team-seat-list">
         ${seats.map(({ seat, index }) => teamSeatRowHtml(game, seat, index, session)).join("")}
       </div>
@@ -152,8 +162,4 @@ function seatActionHtml(seat: Seat, session: Session | undefined): string {
 
 function formatSeatPoints(points: number): string {
   return Number.isInteger(points) ? String(points) : String(Number(points.toFixed(2)));
-}
-
-function teamLabel(team: number): string {
-  return ["Black", "White", "Green", "Red", "Blue"][team - 1] ?? `Color ${team}`;
 }

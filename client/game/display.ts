@@ -6,6 +6,7 @@ import {
   short,
   timeSettingsText,
 } from "../ui/format.ts";
+import { colorResultPrefix, nearestColorName } from "../ui/color-names.ts";
 import type { Game, Seat } from "../types/domain.ts";
 import { variantsHtml } from "./variants.ts";
 
@@ -23,24 +24,26 @@ export function resultText(game: Game): string {
   if (winners.length > 1) return winnerText({ ...game, winnerTeams: winners });
 
   const winnerTeam = winners[0];
-  const prefix = teamResultPrefix(winnerTeam);
+  const prefix = colorResultPrefix(stoneColor(game, winnerTeam));
+  if (game.endReason === "resign") return `${prefix}+R`;
+  if (game.endReason === "timeout") return `${prefix}+T`;
+
   const lastAction = game.history?.at(-1)?.action;
   const wonByResignation = lastAction === "resign" ||
     game.seats.some((seat) => seat.resigned && seat.team !== winnerTeam);
-  if (wonByResignation) return `${prefix}+R`;
+  if (!game.endReason && wonByResignation) return `${prefix}+R`;
 
   const winnerScore = game.points?.[winnerTeam - 1];
+  const activeTeams = new Set(
+    game.seats.filter((seat) => !seat.resigned).map((seat) => seat.team),
+  );
   const nextBestScore = Math.max(
-    ...game.points.map((score, index) => index + 1 === winnerTeam ? -Infinity : score),
+    ...game.points.map((score, index) =>
+      index + 1 !== winnerTeam && activeTeams.has(index + 1) ? score : -Infinity
+    ),
   );
   const margin = winnerScore - nextBestScore;
   return Number.isFinite(margin) ? `${prefix}+${formatPoints(margin)}` : prefix;
-}
-
-function teamResultPrefix(team: number): string {
-  if (team === 1) return "B";
-  if (team === 2) return "W";
-  return `T${team}`;
 }
 
 function winningTeams(game: Game): number[] {
@@ -99,6 +102,10 @@ export function stoneColor(game: Game, team: number): string {
   return defaults[team - 1] ?? "#777777";
 }
 
+export function teamColorName(game: Game, team: number): string {
+  return nearestColorName(stoneColor(game, team));
+}
+
 export function placementPreviewTeam(game: Game): number {
   const activeTeam = game.seats[game.turn]?.team ?? 1;
   return game.config.variants?.zen ? ((game.playMoves ?? 0) % 2) + 1 : activeTeam;
@@ -136,7 +143,7 @@ export function viewersHtml(game: Game): string {
 
 function seatClockText(game: Game, seat: Seat): string {
   const time = game.config.time;
-  if (!time || time.system === "none" || game.config.variants?.zen) return "--:--";
+  if (seat.resigned || !time || time.system === "none" || game.config.variants?.zen) return "--:--";
 
   const seatTime = currentSeatTime(game, seat);
   const mainLeft = Number(seatTime.mainLeft ?? seatTime.main ?? time.main ?? 0);
@@ -169,10 +176,9 @@ function currentSeatTime(game: Game, seat: Seat): Record<string, number> {
     : display.mainLeft + display.periodLeft +
       Math.max(0, display.periodsLeft - 1) * (time.periodTime ?? 0);
   if ((Date.now() - game.clockUpdatedAt) / 1000 >= secondsUntilLoss + 1) {
-    game.phase = "done";
-    game.clockUpdatedAt = undefined;
-    seat.resigned = true;
-    game.winnerTeams = winningTeams(game);
+    display.mainLeft = 0;
+    display.periodLeft = 0;
+    display.periodsLeft = 0;
     return display;
   }
 

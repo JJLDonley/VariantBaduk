@@ -182,6 +182,7 @@ export function createHandler(store: GameStore, hub: RoomHub = roomHub) {
     if (gameMatch && request.method === "GET") {
       const record = store.get(gameMatch[1]);
       if (!record) return json({ error: "game_not_found" }, { status: 404 });
+      hub.broadcastGame(record);
       const { session, headers } = await getOrCreateSession(request);
       return json({ game: hub.toRealtimeGameView(record, session.uuid) }, { headers });
     }

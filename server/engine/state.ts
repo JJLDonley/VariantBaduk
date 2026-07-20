@@ -62,6 +62,7 @@ export function clonePlayState(play: PlayState): PlayState {
     noScorePoints: play.noScorePoints ? [...play.noScorePoints] : undefined,
     scoreAccepted: play.scoreAccepted ? [...play.scoreAccepted] : undefined,
     winnerTeams: play.winnerTeams ? [...play.winnerTeams] : undefined,
+    endReason: play.endReason,
   };
 }
 

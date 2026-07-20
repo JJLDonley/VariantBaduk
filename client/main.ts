@@ -31,6 +31,7 @@ import {
 import { applySavedTheme, toggleTheme, updateThemeToggle } from "./ui/theme.ts";
 import { allVariantRulesHelpHtml } from "./game/variants.ts";
 import {
+  activeClockExpired,
   countdownAudioPath,
   countdownCue,
   type CountdownSound,
@@ -506,6 +507,11 @@ function stopCountdownAudio(): void {
 
 function updateGameClock(game: Game): void {
   if (currentGame !== game) return;
+  if (activeClockExpired(game)) {
+    clearTimeout(gameClockTimer);
+    void showGame(game.id);
+    return;
+  }
   const previousPhase = game.phase;
   maybePlayCountdown(game);
 

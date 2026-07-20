@@ -969,6 +969,501 @@ function gameConfigFromFormData(data) {
   };
 }
 
+// client/ui/color-names.ts
+var NAMED_COLORS = [
+  {
+    name: "Black",
+    hex: "#111111",
+    family: "black"
+  },
+  {
+    name: "White",
+    hex: "#eeeeee",
+    family: "white"
+  },
+  {
+    name: "Green",
+    hex: "#4f9d69",
+    family: "green"
+  },
+  {
+    name: "Red",
+    hex: "#e07a5f",
+    family: "red"
+  },
+  {
+    name: "Jet Black",
+    hex: "#000000",
+    family: "black"
+  },
+  {
+    name: "Charcoal",
+    hex: "#36454f",
+    family: "black"
+  },
+  {
+    name: "Dark Gray",
+    hex: "#4a4a4a",
+    family: "gray"
+  },
+  {
+    name: "Dim Gray",
+    hex: "#696969",
+    family: "gray"
+  },
+  {
+    name: "Gray",
+    hex: "#808080",
+    family: "gray"
+  },
+  {
+    name: "Slate Gray",
+    hex: "#708090",
+    family: "gray"
+  },
+  {
+    name: "Silver",
+    hex: "#c0c0c0",
+    family: "gray"
+  },
+  {
+    name: "Light Gray",
+    hex: "#d3d3d3",
+    family: "gray"
+  },
+  {
+    name: "White Smoke",
+    hex: "#f5f5f5",
+    family: "white"
+  },
+  {
+    name: "Snow",
+    hex: "#fffafa",
+    family: "white"
+  },
+  {
+    name: "Ivory",
+    hex: "#fffff0",
+    family: "white"
+  },
+  {
+    name: "Cream",
+    hex: "#fffdd0",
+    family: "beige"
+  },
+  {
+    name: "Beige",
+    hex: "#f5f5dc",
+    family: "beige"
+  },
+  {
+    name: "Tan",
+    hex: "#d2b48c",
+    family: "beige"
+  },
+  {
+    name: "Khaki",
+    hex: "#f0e68c",
+    family: "beige"
+  },
+  {
+    name: "Brown",
+    hex: "#a52a2a",
+    family: "brown"
+  },
+  {
+    name: "Saddle Brown",
+    hex: "#8b4513",
+    family: "brown"
+  },
+  {
+    name: "Chocolate",
+    hex: "#d2691e",
+    family: "brown"
+  },
+  {
+    name: "Sienna",
+    hex: "#a0522d",
+    family: "brown"
+  },
+  {
+    name: "Peru",
+    hex: "#cd853f",
+    family: "brown"
+  },
+  {
+    name: "Maroon",
+    hex: "#800000",
+    family: "red"
+  },
+  {
+    name: "Bright Red",
+    hex: "#ff0000",
+    family: "red"
+  },
+  {
+    name: "Dark Red",
+    hex: "#8b0000",
+    family: "red"
+  },
+  {
+    name: "Crimson",
+    hex: "#dc143c",
+    family: "red"
+  },
+  {
+    name: "Firebrick",
+    hex: "#b22222",
+    family: "red"
+  },
+  {
+    name: "Indian Red",
+    hex: "#cd5c5c",
+    family: "red"
+  },
+  {
+    name: "Tomato",
+    hex: "#ff6347",
+    family: "red"
+  },
+  {
+    name: "Coral",
+    hex: "#ff7f50",
+    family: "red"
+  },
+  {
+    name: "Salmon",
+    hex: "#fa8072",
+    family: "red"
+  },
+  {
+    name: "Light Salmon",
+    hex: "#ffa07a",
+    family: "red"
+  },
+  {
+    name: "Orange Red",
+    hex: "#ff4500",
+    family: "orange"
+  },
+  {
+    name: "Orange",
+    hex: "#ffa500",
+    family: "orange"
+  },
+  {
+    name: "Dark Orange",
+    hex: "#ff8c00",
+    family: "orange"
+  },
+  {
+    name: "Gold",
+    hex: "#ffd700",
+    family: "yellow"
+  },
+  {
+    name: "Goldenrod",
+    hex: "#daa520",
+    family: "yellow"
+  },
+  {
+    name: "Yellow",
+    hex: "#ffff00",
+    family: "yellow"
+  },
+  {
+    name: "Lemon Chiffon",
+    hex: "#fffacd",
+    family: "yellow"
+  },
+  {
+    name: "Olive",
+    hex: "#808000",
+    family: "yellow"
+  },
+  {
+    name: "Yellow Green",
+    hex: "#9acd32",
+    family: "green"
+  },
+  {
+    name: "Chartreuse",
+    hex: "#7fff00",
+    family: "green"
+  },
+  {
+    name: "Lime",
+    hex: "#00ff00",
+    family: "green"
+  },
+  {
+    name: "Lime Green",
+    hex: "#32cd32",
+    family: "green"
+  },
+  {
+    name: "Classic Green",
+    hex: "#008000",
+    family: "green"
+  },
+  {
+    name: "Dark Green",
+    hex: "#006400",
+    family: "green"
+  },
+  {
+    name: "Forest Green",
+    hex: "#228b22",
+    family: "green"
+  },
+  {
+    name: "Sea Green",
+    hex: "#2e8b57",
+    family: "green"
+  },
+  {
+    name: "Medium Sea Green",
+    hex: "#3cb371",
+    family: "green"
+  },
+  {
+    name: "Spring Green",
+    hex: "#00ff7f",
+    family: "green"
+  },
+  {
+    name: "Mint",
+    hex: "#98ff98",
+    family: "green"
+  },
+  {
+    name: "Teal",
+    hex: "#008080",
+    family: "teal"
+  },
+  {
+    name: "Dark Cyan",
+    hex: "#008b8b",
+    family: "teal"
+  },
+  {
+    name: "Light Sea Green",
+    hex: "#20b2aa",
+    family: "teal"
+  },
+  {
+    name: "Turquoise",
+    hex: "#40e0d0",
+    family: "teal"
+  },
+  {
+    name: "Aquamarine",
+    hex: "#7fffd4",
+    family: "teal"
+  },
+  {
+    name: "Cyan",
+    hex: "#00ffff",
+    family: "cyan"
+  },
+  {
+    name: "Powder Blue",
+    hex: "#b0e0e6",
+    family: "blue"
+  },
+  {
+    name: "Sky Blue",
+    hex: "#87ceeb",
+    family: "blue"
+  },
+  {
+    name: "Deep Sky Blue",
+    hex: "#00bfff",
+    family: "blue"
+  },
+  {
+    name: "Cornflower Blue",
+    hex: "#6495ed",
+    family: "blue"
+  },
+  {
+    name: "Dodger Blue",
+    hex: "#1e90ff",
+    family: "blue"
+  },
+  {
+    name: "Bright Blue",
+    hex: "#0000ff",
+    family: "blue"
+  },
+  {
+    name: "Royal Blue",
+    hex: "#4169e1",
+    family: "blue"
+  },
+  {
+    name: "Medium Blue",
+    hex: "#0000cd",
+    family: "blue"
+  },
+  {
+    name: "Dark Blue",
+    hex: "#00008b",
+    family: "blue"
+  },
+  {
+    name: "Navy",
+    hex: "#000080",
+    family: "blue"
+  },
+  {
+    name: "Steel Blue",
+    hex: "#4682b4",
+    family: "blue"
+  },
+  {
+    name: "Slate Blue",
+    hex: "#6a5acd",
+    family: "blue"
+  },
+  {
+    name: "Indigo",
+    hex: "#4b0082",
+    family: "indigo"
+  },
+  {
+    name: "Purple",
+    hex: "#800080",
+    family: "purple"
+  },
+  {
+    name: "Dark Violet",
+    hex: "#9400d3",
+    family: "purple"
+  },
+  {
+    name: "Blue Violet",
+    hex: "#8a2be2",
+    family: "purple"
+  },
+  {
+    name: "Medium Purple",
+    hex: "#9370db",
+    family: "purple"
+  },
+  {
+    name: "Violet",
+    hex: "#ee82ee",
+    family: "purple"
+  },
+  {
+    name: "Orchid",
+    hex: "#da70d6",
+    family: "purple"
+  },
+  {
+    name: "Plum",
+    hex: "#dda0dd",
+    family: "purple"
+  },
+  {
+    name: "Lavender",
+    hex: "#e6e6fa",
+    family: "purple"
+  },
+  {
+    name: "Magenta",
+    hex: "#ff00ff",
+    family: "magenta"
+  },
+  {
+    name: "Rose",
+    hex: "#ff007f",
+    family: "pink"
+  },
+  {
+    name: "Hot Pink",
+    hex: "#ff69b4",
+    family: "pink"
+  },
+  {
+    name: "Deep Pink",
+    hex: "#ff1493",
+    family: "pink"
+  },
+  {
+    name: "Pink",
+    hex: "#ffc0cb",
+    family: "pink"
+  },
+  {
+    name: "Light Pink",
+    hex: "#ffb6c1",
+    family: "pink"
+  }
+];
+var FAMILY_PREFIX = {
+  black: "B",
+  white: "W",
+  gray: "GY",
+  beige: "BE",
+  brown: "BR",
+  red: "R",
+  orange: "O",
+  yellow: "Y",
+  green: "G",
+  teal: "TE",
+  cyan: "C",
+  blue: "BL",
+  indigo: "I",
+  purple: "P",
+  magenta: "M",
+  pink: "PK"
+};
+var LAB_COLORS = NAMED_COLORS.map((color) => ({
+  ...color,
+  lab: hexToLab(color.hex)
+}));
+function nearestColorName(hex) {
+  return nearestNamedColor(hex).name;
+}
+function colorResultPrefix(hex) {
+  return FAMILY_PREFIX[nearestNamedColor(hex).family];
+}
+function nearestNamedColor(hex) {
+  const lab = hexToLab(hex);
+  if (!lab) return NAMED_COLORS[0];
+  let closest = LAB_COLORS[0];
+  let closestDistance = Infinity;
+  for (const color of LAB_COLORS) {
+    const distance = labDistance(lab, color.lab);
+    if (distance >= closestDistance) continue;
+    closest = color;
+    closestDistance = distance;
+  }
+  return closest;
+}
+function hexToLab(hex) {
+  const match = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex.trim());
+  if (!match) return void 0;
+  const [red, green, blue] = match.slice(1).map((part) => Number.parseInt(part, 16) / 255).map((channel) => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+  const x = (red * 0.4124 + green * 0.3576 + blue * 0.1805) / 0.95047;
+  const y = red * 0.2126 + green * 0.7152 + blue * 0.0722;
+  const z = (red * 0.0193 + green * 0.1192 + blue * 0.9505) / 1.08883;
+  const convert = (value) => value > 8856e-6 ? Math.cbrt(value) : 7.787 * value + 16 / 116;
+  const fx = convert(x);
+  const fy = convert(y);
+  const fz = convert(z);
+  return [
+    116 * fy - 16,
+    500 * (fx - fy),
+    200 * (fy - fz)
+  ];
+}
+function labDistance(first, second) {
+  return Math.hypot(first[0] - second[0], first[1] - second[1], first[2] - second[2]);
+}
+
 // client/create/form.ts
 function selectBoardSizeOption(event) {
   const button = event.currentTarget?.closest("[data-board-size-option]");
@@ -1048,12 +1543,12 @@ function creatorSeatOptions() {
 function teamGoSeatOptions() {
   const colorGoEnabled = document.querySelector("[name='colorGo']")?.checked;
   const teamCount = colorGoEnabled ? Number(document.querySelector("[name='colorGoPlayerCount']")?.value ?? 3) : 2;
-  const labels = [
-    "Black",
-    "White",
-    "Green",
-    "Red"
-  ].slice(0, teamCount);
+  const labels = Array.from({
+    length: teamCount
+  }, (_, index) => {
+    const color = document.querySelector(`[name='colorGoColor${index + 1}']`)?.value;
+    return nearestColorName(color ?? "#111111");
+  });
   const options = labels.flatMap((label, teamIndex) => {
     const count = Number(document.querySelector(`[name='teamGoSeats${teamIndex + 1}']`)?.value ?? 0);
     return Array.from({
@@ -1105,6 +1600,18 @@ function updateColorGoKomiDefaults() {
     if (input) input.value = String(defaults[team - 1] ?? 0);
   }
 }
+function updateTeamColorNames(root = document) {
+  for (let team = 1; team <= 4; team++) {
+    const input = root.querySelector(`[name='colorGoColor${team}']`);
+    if (!input) continue;
+    const name = nearestColorName(input.value);
+    const heading = root.querySelector(`[data-team-color-name='${team}']`);
+    if (heading) heading.textContent = name;
+    const label = root.querySelector(`[data-team-color-label='${team}']`);
+    label?.setAttribute("aria-label", `${name} color`);
+    input.title = name;
+  }
+}
 function updateTimeOptions() {
   const selected = document.querySelector("[name='timeSystem']")?.value ?? "none";
   for (const option of document.querySelectorAll("[data-time-option]")) {
@@ -1125,6 +1632,7 @@ function updateRuleDefaults() {
   if (captures) captures.checked = rules === "japanese";
 }
 function updateVariantOptions() {
+  updateTeamColorNames();
   updateVariantConflicts();
   updateBoardSizeButtons();
   const colorGoEnabled = document.querySelector("[name='colorGo']")?.checked;
@@ -1427,6 +1935,12 @@ function bindCreateGameForm(submitHandler, statusElement2, root = document) {
   for (const input of root.querySelectorAll("[name^='teamGoSeats']")) {
     input.addEventListener("input", updateCreatorSeatOptions);
   }
+  for (const input of root.querySelectorAll("[name^='colorGoColor']")) {
+    input.addEventListener("input", () => {
+      updateTeamColorNames(root);
+      updateCreatorSeatOptions();
+    });
+  }
   root.querySelector(".custom-goban-open")?.addEventListener("click", () => openCustomGobanEditor(statusElement2));
   root.querySelector("[name='circloidGobanMode']")?.addEventListener("change", () => toggleCircloidGoban(root));
   root.querySelector(".joseki-card-open")?.addEventListener("click", () => openJosekiCardDialog(statusElement2));
@@ -1442,6 +1956,7 @@ function refreshCreateGameForm() {
   updateTimeOptions();
   updateRuleDefaults();
   updateBoardSizeButtons();
+  updateTeamColorNames();
   updateVariantOptions();
   updateCreatorSeatOptions();
   refreshCustomGobanPresetButtons();
@@ -1663,19 +2178,17 @@ function resultText(game) {
     winnerTeams: winners
   });
   const winnerTeam = winners[0];
-  const prefix = teamResultPrefix(winnerTeam);
+  const prefix = colorResultPrefix(stoneColor(game, winnerTeam));
+  if (game.endReason === "resign") return `${prefix}+R`;
+  if (game.endReason === "timeout") return `${prefix}+T`;
   const lastAction = game.history?.at(-1)?.action;
   const wonByResignation = lastAction === "resign" || game.seats.some((seat) => seat.resigned && seat.team !== winnerTeam);
-  if (wonByResignation) return `${prefix}+R`;
+  if (!game.endReason && wonByResignation) return `${prefix}+R`;
   const winnerScore = game.points?.[winnerTeam - 1];
-  const nextBestScore = Math.max(...game.points.map((score, index) => index + 1 === winnerTeam ? -Infinity : score));
+  const activeTeams = new Set(game.seats.filter((seat) => !seat.resigned).map((seat) => seat.team));
+  const nextBestScore = Math.max(...game.points.map((score, index) => index + 1 !== winnerTeam && activeTeams.has(index + 1) ? score : -Infinity));
   const margin = winnerScore - nextBestScore;
   return Number.isFinite(margin) ? `${prefix}+${formatPoints(margin)}` : prefix;
-}
-function teamResultPrefix(team) {
-  if (team === 1) return "B";
-  if (team === 2) return "W";
-  return `T${team}`;
 }
 function winningTeams(game) {
   if (game.winnerTeams?.length) return game.winnerTeams;
@@ -1726,6 +2239,9 @@ function stoneColor(game, team) {
   ];
   return defaults[team - 1] ?? "#777777";
 }
+function teamColorName(game, team) {
+  return nearestColorName(stoneColor(game, team));
+}
 function placementPreviewTeam(game) {
   const activeTeam = game.seats[game.turn]?.team ?? 1;
   return game.config.variants?.zen ? (game.playMoves ?? 0) % 2 + 1 : activeTeam;
@@ -1750,7 +2266,7 @@ function seatMetaHtml(game, seat) {
 }
 function seatClockText(game, seat) {
   const time = game.config.time;
-  if (!time || time.system === "none" || game.config.variants?.zen) return "--:--";
+  if (seat.resigned || !time || time.system === "none" || game.config.variants?.zen) return "--:--";
   const seatTime = currentSeatTime(game, seat);
   const mainLeft = Number(seatTime.mainLeft ?? seatTime.main ?? time.main ?? 0);
   if (mainLeft > 0 || time.system === "fischer") return formatHms(mainLeft);
@@ -1772,10 +2288,9 @@ function currentSeatTime(game, seat) {
   if (game.phase !== "play" || game.seats[game.turn]?.team !== seat.team || game.clockUpdatedAt === void 0) return display;
   const secondsUntilLoss = time.system === "fischer" ? display.mainLeft : display.mainLeft + display.periodLeft + Math.max(0, display.periodsLeft - 1) * (time.periodTime ?? 0);
   if ((Date.now() - game.clockUpdatedAt) / 1e3 >= secondsUntilLoss + 1) {
-    game.phase = "done";
-    game.clockUpdatedAt = void 0;
-    seat.resigned = true;
-    game.winnerTeams = winningTeams(game);
+    display.mainLeft = 0;
+    display.periodLeft = 0;
+    display.periodsLeft = 0;
     return display;
   }
   let elapsed = Math.max(0, (Date.now() - game.clockUpdatedAt) / 1e3);
@@ -2494,7 +3009,7 @@ function teamColorPlayerListsHtml(game) {
     const players = game.seats.filter((seat) => seat.team === team && seat.playerUuid).map((seat) => `<div class="user-row">${escapeHtml(seat.publicName ?? short(seat.playerUuid))}</div>`).join("") || `<p class="muted-text">None</p>`;
     return `
       <div class="team-users" data-team="${team}">
-        <h4><i class="color-dot" data-team="${team}" style="--stone-color: ${stoneColor(game, team)}"></i>${teamLabel(team)}</h4>
+        <h4><i class="color-dot" data-team="${team}" style="--stone-color: ${stoneColor(game, team)}"></i>${escapeHtml(teamColorName(game, team))}</h4>
         <div class="team-users__players">${players}</div>
       </div>
     `;
@@ -2520,7 +3035,7 @@ function teamSeatsHtml(game, session2) {
     })).filter(({ seat }) => seat.team === team);
     if (game.config.variants?.teamGo) return teamSeatCardHtml(game, team, seats, session2);
     return `
-      <div class="team-seat-box" data-team="${team}">
+      <div class="team-seat-box" data-team="${team}" style="--team-color: ${stoneColor(game, team)}">
         <div class="team-seat-list">
           ${seats.map(({ seat, index }) => playerSeatHtml(game, seat, index, session2)).join("")}
         </div>
@@ -2532,7 +3047,7 @@ function teamSeatCardHtml(game, team, seats, session2) {
   const active = seats.find(({ index }) => index === game.turn);
   const clockSeat = active?.seat ?? seats[0]?.seat;
   return `
-    <div class="team-seat-box team-card" data-team="${team}">
+    <div class="team-seat-box team-card" data-team="${team}" style="--team-color: ${stoneColor(game, team)}">
       <div class="team-seat-list">
         ${seats.map(({ seat, index }) => teamSeatRowHtml(game, seat, index, session2)).join("")}
       </div>
@@ -2583,15 +3098,6 @@ function seatActionHtml(seat, session2) {
 }
 function formatSeatPoints(points) {
   return Number.isInteger(points) ? String(points) : String(Number(points.toFixed(2)));
-}
-function teamLabel(team) {
-  return [
-    "Black",
-    "White",
-    "Green",
-    "Red",
-    "Blue"
-  ][team - 1] ?? `Color ${team}`;
 }
 
 // client/game/territory.ts
@@ -3057,6 +3563,21 @@ function countdownCue(game, now = Date.now()) {
   const remaining = periodTime - laterElapsed % periodTime;
   return cueForRemaining(game, remaining, `period-${laterPeriod}`);
 }
+function activeClockExpired(game, now = Date.now()) {
+  const time = game.config.time;
+  const activeSeat = game.seats[game.turn];
+  if (game.phase !== "play" || !time || time.system === "none" || game.config.variants?.zen || game.clockUpdatedAt === void 0 || !activeSeat) return false;
+  const seatTime = activeSeat.time ?? activeSeat.clock ?? {};
+  const mainLeft = Math.max(0, Number(seatTime.mainLeft ?? seatTime.main ?? time.main ?? 0));
+  const elapsed = Math.max(0, (now - game.clockUpdatedAt) / 1e3);
+  if (time.system === "fischer") return elapsed >= mainLeft + 1;
+  if (time.system !== "byoyomi") return false;
+  const periodsLeft = Math.max(0, Math.floor(Number(seatTime.periodsLeft ?? seatTime.periods ?? time.periods ?? 0)));
+  const firstPeriod = Math.max(0, Number(seatTime.periodLeft ?? seatTime.periodTime ?? time.periodTime ?? 0));
+  const periodTime = Math.max(0, Number(time.periodTime ?? firstPeriod));
+  const secondsUntilLoss = mainLeft + firstPeriod + Math.max(0, periodsLeft - 1) * periodTime;
+  return elapsed >= secondsUntilLoss + 1;
+}
 function cueForRemaining(game, remaining, clockSegment) {
   if (!(remaining >= 1 && remaining < 11)) return void 0;
   const seconds = Math.floor(remaining);
@@ -3473,6 +3994,11 @@ function stopCountdownAudio() {
 }
 function updateGameClock(game) {
   if (currentGame !== game) return;
+  if (activeClockExpired(game)) {
+    clearTimeout(gameClockTimer);
+    void showGame(game.id);
+    return;
+  }
   const previousPhase = game.phase;
   maybePlayCountdown(game);
   for (const clock of panel.querySelectorAll(".seat-time")) {

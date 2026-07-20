@@ -1,7 +1,7 @@
 import { Board, findGroups } from "./board.ts";
 import { captureDeadOpponents, violatesSuperko } from "./capture.ts";
 import { applyHandicap } from "./handicap.ts";
-import { scoreBoard, scoringAreaPoints, winnerTeams } from "./scoring.ts";
+import { scoreBoard, scoringAreaPoints } from "./scoring.ts";
 import { cloneState, createPlayState, pushHistory, stateFromHistory } from "./state.ts";
 import { shouldKeepTurn } from "./variants/nPlusOne.ts";
 import {
@@ -211,9 +211,11 @@ function pass(state: SharedState, board: Board, mods: RuleMods): MakeActionResul
 function resign(state: SharedState, board: Board, mods: RuleMods): MakeActionResult {
   state.seats[state.turn].resigned = true;
   const activeSeats = state.seats.filter((seat) => !seat.resigned);
-  if (activeSeats.length === 0 || (!mods.colorGo && activeSeats.length <= 1)) {
+  const activeTeams = [...new Set(activeSeats.map((seat) => seat.team))];
+  if (activeTeams.length <= 1) {
     state.phase = "done";
-    state.play.winnerTeams = [...new Set(activeSeats.map((seat) => seat.team))];
+    state.play.winnerTeams = activeTeams;
+    state.play.endReason = "resign";
   } else {
     state.play.extraTurnsRemaining = 0;
     advanceTurn(state, false, mods);
@@ -286,7 +288,14 @@ function acceptScore(
   );
   if (activeSeats) {
     state.phase = "done";
-    state.play.winnerTeams = winnerTeams(state.points);
+    const activeTeams = [
+      ...new Set(
+        state.seats.filter((seat) => !seat.resigned).map((seat) => seat.team),
+      ),
+    ];
+    const highScore = Math.max(...activeTeams.map((team) => state.points[team - 1]));
+    state.play.winnerTeams = activeTeams.filter((team) => state.points[team - 1] === highScore);
+    state.play.endReason = "score";
   }
   pushHistory(state, board);
   return { ok: true, state };

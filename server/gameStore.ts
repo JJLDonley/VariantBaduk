@@ -3,6 +3,7 @@ import { Board, findGroups } from "./engine/board.ts";
 import { captureDeadOpponents } from "./engine/capture.ts";
 import { createGame, makeAction } from "./engine/game.ts";
 import { pushHistory } from "./engine/state.ts";
+import { advanceTurn } from "./engine/turn.ts";
 import { placementPoints } from "./engine/variants/pixel.ts";
 import type {
   ActionKind,
@@ -96,6 +97,7 @@ export type ClientGameView = {
   noScorePoints?: boolean[];
   scoreAccepted?: boolean[];
   winnerTeams?: number[];
+  endReason?: "resign" | "timeout" | "score";
   clockUpdatedAt?: number;
   josekiSetup?: SharedState["josekiSetup"];
   hiddenSetup?: SharedState["hiddenSetup"];
@@ -447,15 +449,17 @@ export class GameStore {
       advanceJosekiSelectionIfTimedOut(record, now);
       return;
     }
-    if (!markTimedOut(record, now)) return;
+    const timedOutSeat = markTimedOut(record, now);
+    if (!timedOutSeat) return;
     record.updatedAt = now;
     this.repository?.saveGame(record);
     this.repository?.appendEvent(
       record.id,
-      record.state.seats[record.state.turn]?.playerUuid,
+      timedOutSeat.playerUuid,
       "timeout",
       {
-        seatId: record.state.seats[record.state.turn]?.id,
+        seatId: timedOutSeat.id,
+        team: timedOutSeat.team,
       },
     );
   }
@@ -482,6 +486,7 @@ export function toClientGameView(record: GameRecord, viewerUuid?: string): Clien
     noScorePoints: record.state.play.noScorePoints,
     scoreAccepted: record.state.play.scoreAccepted,
     winnerTeams: record.state.play.winnerTeams,
+    endReason: record.state.play.endReason,
     clockUpdatedAt: record.state.clockUpdatedAt,
     josekiSetup: record.state.josekiSetup,
     hiddenSetup: record.state.hiddenSetup,
@@ -891,29 +896,36 @@ function allSeatsOccupied(state: SharedState): boolean {
   return state.seats.every((seat) => seat.playerUuid);
 }
 
-function markTimedOut(record: GameRecord, now: number): boolean {
+function markTimedOut(record: GameRecord, now: number): Seat | undefined {
   const state = record.state;
   const time = record.config.time;
   if (
     !clocksEnabled(record.config) || !time || state.phase !== "play" ||
     state.clockUpdatedAt === undefined
-  ) return false;
+  ) return undefined;
   const activeSeat = state.seats[state.turn];
-  if (!activeSeat?.time) return false;
+  if (!activeSeat?.time) return undefined;
   const elapsed = (now - state.clockUpdatedAt) / 1000;
-  if (elapsed < clockSecondsUntilLoss(activeSeat, time) + 1) return false;
+  if (elapsed < clockSecondsUntilLoss(activeSeat, time) + 1) return undefined;
 
-  applyTeamClockElapsed(state, state.turn, record.config, elapsed);
+  applyTeamClockElapsed(state, state.turn, record.config, elapsed, false);
   for (const seat of state.seats) if (seat.team === activeSeat.team) seat.resigned = true;
-  state.phase = "done";
-  state.play.winnerTeams = remainingWinnerTeams(state.seats);
-  state.clockUpdatedAt = undefined;
-  return true;
+  const remainingTeams = activeTeamIds(state.seats);
+  if (remainingTeams.length <= 1) {
+    state.phase = "done";
+    state.play.winnerTeams = remainingTeams;
+    state.play.endReason = "timeout";
+    state.clockUpdatedAt = undefined;
+  } else {
+    state.play.extraTurnsRemaining = 0;
+    advanceTurn(state, false, record.config.variants);
+    state.clockUpdatedAt = now;
+  }
+  return activeSeat;
 }
 
-function remainingWinnerTeams(seats: Seat[]): number[] {
-  const activeTeams = [...new Set(seats.filter((seat) => !seat.resigned).map((seat) => seat.team))];
-  return activeTeams.length === 1 ? activeTeams : [];
+function activeTeamIds(seats: Seat[]): number[] {
+  return [...new Set(seats.filter((seat) => !seat.resigned).map((seat) => seat.team))];
 }
 
 function clockSecondsUntilLoss(seat: Seat, time: TimeConfig): number {
@@ -929,11 +941,12 @@ function applyTeamClockElapsed(
   activeSeatIndex: number,
   config: GameConfig,
   elapsedSeconds: number,
+  addIncrement = true,
 ): void {
   const time = config.time;
   const activeSeat = state.seats[activeSeatIndex];
   if (!time || !activeSeat) return;
-  applyClockElapsed(activeSeat, time, elapsedSeconds);
+  applyClockElapsed(activeSeat, time, elapsedSeconds, addIncrement);
   for (const seat of state.seats) {
     if (seat !== activeSeat && seat.team === activeSeat.team) {
       seat.time = activeSeat.time ? { ...activeSeat.time } : undefined;
@@ -941,7 +954,12 @@ function applyTeamClockElapsed(
   }
 }
 
-function applyClockElapsed(seat: Seat, time: TimeConfig | undefined, elapsedSeconds: number): void {
+function applyClockElapsed(
+  seat: Seat,
+  time: TimeConfig | undefined,
+  elapsedSeconds: number,
+  addIncrement = true,
+): void {
   if (!time || time.system === "none" || !seat.time) return;
   let elapsed = Math.max(0, elapsedSeconds);
   const mainUsed = Math.min(seat.time.mainLeft, elapsed);
@@ -949,7 +967,7 @@ function applyClockElapsed(seat: Seat, time: TimeConfig | undefined, elapsedSeco
   elapsed -= mainUsed;
 
   if (time.system === "fischer") {
-    seat.time.mainLeft += time.fischerIncrement ?? 0;
+    if (addIncrement) seat.time.mainLeft += time.fischerIncrement ?? 0;
     return;
   }
 
