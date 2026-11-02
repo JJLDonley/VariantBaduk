@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/styles/create-game.css" />
     <link rel="stylesheet" href="/styles/custom-goban.css" />
     <link rel="stylesheet" href="/styles/joseki-card.css" />
+    <link rel="stylesheet" href="/styles/shape-card.css" />
     <link rel="stylesheet" href="/styles/panels.css" />
     <link rel="stylesheet" href="/styles/players.css" />
     <link rel="stylesheet" href="/styles/dialogs.css" />
@@ -120,6 +121,50 @@
               </label>
             </div>
           </div>
+          <div id="katachi-controls" class="sound-control">
+            <button
+              id="katachi-controls-toggle"
+              class="sound-toggle"
+              type="button"
+              aria-label="Katachi controls"
+              aria-expanded="false"
+              title="Katachi controls"
+            >
+              ⌨
+            </button>
+            <div id="katachi-controls-popover" class="sound-popover" hidden>
+              <label>
+                Place card with
+                <select
+                  id="katachi-place-button"
+                  aria-label="Place card with (the other button rotates)"
+                >
+                  <option value="left">Left click</option>
+                  <option value="right">Right click</option>
+                </select>
+              </label>
+              <label>
+                Rotate key
+                <input
+                  id="katachi-rotate-key"
+                  class="key-input"
+                  type="text"
+                  maxlength="1"
+                  aria-label="Rotate key"
+                />
+              </label>
+              <label>
+                Mirror key
+                <input
+                  id="katachi-mirror-key"
+                  class="key-input"
+                  type="text"
+                  maxlength="1"
+                  aria-label="Mirror key"
+                />
+              </label>
+            </div>
+          </div>
           <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Change theme">
             ◐
           </button>
@@ -130,7 +175,7 @@
         <button class="dialog-close" data-landing-help-close type="button" aria-label="Close">
           ×
         </button>
-        <div data-landing-help-body></div>
+        <div class="dialog-scroll ui-scroll" data-landing-help-body></div>
       </dialog>
 
       <aside class="card ui-card game-list-card" aria-labelledby="game-list-title">
@@ -259,6 +304,8 @@
                 Hidden</label>
               <label class="variant-button"><input type="checkbox" name="josekiCard" /> Joseki
                 Card</label>
+              <label class="variant-button"><input type="checkbox" name="shapeCards" />
+                Katachi</label>
               <label class="variant-button"><input type="checkbox" name="tetris" /> Tetris</label>
               <label class="variant-button"><input type="checkbox" name="nPlusOne" /> N+1</label>
               <label class="variant-button"><input type="checkbox" name="traitor" /> Traitor</label>
@@ -458,6 +505,32 @@
                 <input type="checkbox" name="invisibleStonesShowViewers" checked /> Viewers see
                 invisible stones
               </label>
+              <div data-variant-option="shapeCards" class="custom-board-settings">
+                <h4>Katachi</h4>
+                <div class="bonus-points-row">
+                  <label class="ponnuki-points-field">
+                    Hand size
+                    <select name="shapeCardHandSize">
+                      <option value="3">3</option>
+                      <option value="4" selected>4</option>
+                      <option value="5">5</option>
+                    </select>
+                  </label>
+                  <label
+                    class="check"
+                    data-tooltip="Place the whole card at once as a single move"
+                  >
+                    Full <input type="checkbox" name="shapeCardFull" />
+                  </label>
+                  <label
+                    class="check"
+                    data-tooltip="An empty deck reshuffles your discards instead of ending the game"
+                  >
+                    Reshuffle <input type="checkbox" name="shapeCardReshuffle" />
+                  </label>
+                </div>
+                <button class="shape-card-open" type="button">Preview Katachi Cards</button>
+              </div>
               <div data-variant-option="josekiCard" class="ui-stack">
                 <button class="joseki-card-open" type="button">Preview Joseki Cards</button>
                 <p class="ui-muted">

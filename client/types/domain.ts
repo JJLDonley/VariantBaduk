@@ -36,6 +36,22 @@ export type JosekiStone = {
   color: number;
 };
 
+export type ShapeStoneColor = "self" | "opponent";
+
+export type ShapeCard = {
+  id: string;
+  name: string;
+  count: number;
+  stones: Array<{ x: number; y: number; rel: ShapeStoneColor }>;
+};
+
+export type ShapeCardsView = {
+  seats: { seatId: string; handCount: number; drawCount: number; discard: string[] }[];
+  cards: Record<string, ShapeCard>;
+  hands: Record<string, string[]>;
+  active?: { seatId: string; cardId: string; placed: ShapeCard["stones"] };
+};
+
 export type JosekiCard = {
   id: string;
   name: string;
@@ -59,6 +75,10 @@ export type GameVariants = {
   hiddenMoveCount?: number;
   hiddenMoveShowViewers?: boolean;
   josekiCard?: boolean;
+  shapeCards?: boolean;
+  shapeCardHandSize?: number;
+  shapeCardFull?: boolean;
+  shapeCardReshuffle?: boolean;
   tetris?: boolean;
   nPlusOne?: boolean;
   nPlusOneCount?: number;
@@ -88,8 +108,17 @@ export type CreateGameConfig =
   & Required<Pick<GameConfig, "time" | "variants">>
   & Omit<GameConfig, "time" | "variants">;
 
+export type ShapeHistoryCard = {
+  seatId: string;
+  cardId: string;
+  stone?: number;
+  total?: number;
+  discarded?: boolean;
+};
+
 export type HistoryEntry = {
   action?: string;
+  shapeCard?: ShapeHistoryCard;
   phase?: "joseki" | "hidden" | "play" | "scoring" | "done" | string;
   board?: number[];
   boardOpacity?: number[];
@@ -150,11 +179,12 @@ export type Game = {
   scoreAccepted?: boolean[];
   points: number[];
   winnerTeams?: number[];
-  endReason?: "resign" | "timeout" | "score";
+  endReason?: "resign" | "timeout" | "score" | "unknown";
   clockUpdatedAt?: number;
   traitorStonesPlaced?: number[];
   josekiSetup?: JosekiSetup;
   hiddenSetup?: HiddenSetup;
+  shapeCards?: ShapeCardsView;
 };
 
 export type GameActionType =
@@ -175,6 +205,9 @@ export type GameAction = {
   y?: number;
   config?: CreateGameConfig;
   cardIds?: string[];
+  cardId?: string;
+  stoneColor?: ShapeStoneColor;
+  stones?: ShapeCard["stones"];
   placement?: Partial<NonNullable<JosekiSetup["currentPlacement"]>>;
 };
 

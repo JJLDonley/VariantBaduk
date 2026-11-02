@@ -34,6 +34,9 @@ async function listGames() {
 async function readGameList(response) {
   return await jsonResponse(response);
 }
+async function listShapeCards() {
+  return await fetch("/api/shape-cards");
+}
 async function listJosekiCards() {
   return await fetch("/api/joseki-cards");
 }
@@ -950,6 +953,10 @@ function gameConfigFromFormData(data) {
       hiddenMoveCount: Number(data.get("hiddenMoveCount")),
       hiddenMoveShowViewers: viewersSeeInvisible,
       josekiCard: data.has("josekiCard"),
+      shapeCards: data.has("shapeCards"),
+      shapeCardHandSize: Number(data.get("shapeCardHandSize") ?? 4),
+      shapeCardFull: data.has("shapeCardFull"),
+      shapeCardReshuffle: data.has("shapeCardReshuffle"),
       tetris: data.has("tetris"),
       nPlusOne: data.has("nPlusOne"),
       nPlusOneCount: Number(data.get("nPlusOneCount")),
@@ -1690,6 +1697,40 @@ function updateVariantOptions() {
     scrollTo(0, 0);
   });
 }
+var SHAPE_CARD_BLOCKED = [
+  [
+    "pixel",
+    "Pixel"
+  ],
+  [
+    "nPlusOne",
+    "N+1"
+  ],
+  [
+    "traitor",
+    "Traitor"
+  ],
+  [
+    "tetris",
+    "Tetris"
+  ],
+  [
+    "zen",
+    "Zen"
+  ],
+  [
+    "colorGo",
+    "Color Go"
+  ],
+  [
+    "hiddenMove",
+    "Hidden"
+  ],
+  [
+    "phantomMove",
+    "Phantom"
+  ]
+];
 function invalidVariantComboMessage(data) {
   if (data.has("josekiCard") && Number(data.get("boardSize")) !== 19) {
     return "Joseki Card requires a 19\xD719 board.";
@@ -1701,6 +1742,13 @@ function invalidVariantComboMessage(data) {
   if (data.has("zen") && data.has("colorGo")) return "Zen cannot be combined with Color Go.";
   if (data.has("teamGo") && data.has("zen")) {
     return "Team Go cannot be combined with Zen.";
+  }
+  if (data.has("shapeCards")) {
+    const blocked = SHAPE_CARD_BLOCKED.filter(([name]) => data.has(name)).map(([, label]) => label);
+    if (blocked.length) return `Katachi cannot be combined with ${blocked.join(", ")}.`;
+    if (data.get("ruleset") === "chinese" && Number(data.get("handicap") ?? 0) > 1) {
+      return "Katachi cannot be combined with free handicap placement.";
+    }
   }
   if (data.has("tetris") && data.has("pixel")) return "Tetris cannot be combined with Pixel.";
   if (data.has("tetris") && data.has("nPlusOne") && Number(data.get("nPlusOneCount")) === 4) {
@@ -1745,6 +1793,21 @@ function updateVariantConflicts() {
   setVariantDisabled(josekiCard, customGoban.checked || tetris.checked || zen.checked || colorGo.checked);
   boardSize.setCustomValidity(josekiCard.checked && Number(boardSize.value) !== 19 ? "Joseki Card requires a 19\xD719 board." : "");
   nPlusOneCount.setCustomValidity(tetrisChecked && Number(nPlusOneCount.value) === 4 ? "Tetris cannot use N+1 count 4." : "");
+  updateShapeCardConflicts();
+}
+function updateShapeCardConflicts() {
+  const shapeCards = document.querySelector("[name='shapeCards']");
+  if (!shapeCards) return;
+  const blocked = SHAPE_CARD_BLOCKED.map(([name]) => document.querySelector(`[name='${name}']`)).filter((input) => Boolean(input));
+  if (shapeCards.checked && document.activeElement === shapeCards) {
+    for (const input of blocked) input.checked = false;
+  }
+  const anyBlocked = blocked.some((input) => input.checked);
+  if (anyBlocked && shapeCards.checked) shapeCards.checked = false;
+  if (shapeCards.checked) {
+    for (const input of blocked) setVariantDisabled(input, true);
+  }
+  setVariantDisabled(shapeCards, anyBlocked);
 }
 function resolveExclusivePair(first, second) {
   if (!first.checked || !second.checked) return;
@@ -1894,7 +1957,7 @@ async function openJosekiCardDialog(statusElement2) {
   }
   const { cards } = await readJosekiCards(response);
   const dialog = document.createElement("dialog");
-  dialog.className = "ui-dialog ui-scroll joseki-card-dialog";
+  dialog.className = "ui-dialog joseki-card-dialog";
   dialog.innerHTML = josekiCardDialogHtml(cards);
   document.body.append(dialog);
   dialog.querySelector(".dialog-close")?.addEventListener("click", () => dialog.close());
@@ -1906,8 +1969,346 @@ function josekiCardDialogHtml(cards) {
     <button class="dialog-close" type="button" aria-label="Close">\xD7</button>
     <h3>Joseki Cards</h3>
     <p class="ui-muted">Preview available cards. Selection and pre-game placement are next.</p>
-    ${josekiCardGridHtml(cards)}
+    <div class="dialog-scroll ui-scroll">${josekiCardGridHtml(cards)}</div>
   `;
+}
+
+// client/game/shape-card-state.ts
+var selection;
+var selectedStoneColor = "self";
+var colorCardKey = "";
+function turnHandSeatId(game) {
+  const seatId = game.seats[game.turn]?.id;
+  return seatId && game.shapeCards?.hands[seatId] ? seatId : void 0;
+}
+function selectedShapeCardIndex(game) {
+  if (!selection || selection.gameId !== String(game.id)) return void 0;
+  if (game.phase !== "play" || game.shapeCards?.active) return void 0;
+  const seatId = turnHandSeatId(game);
+  if (!seatId || seatId !== selection.seatId) return void 0;
+  const hand = game.shapeCards?.hands[seatId] ?? [];
+  if (hand[selection.index] === selection.cardId) return selection.index;
+  const moved = hand.indexOf(selection.cardId);
+  return moved >= 0 ? moved : void 0;
+}
+function selectShapeCard(game, index) {
+  const seatId = turnHandSeatId(game);
+  const cardId = seatId !== void 0 && index !== void 0 ? game.shapeCards?.hands[seatId]?.[index] : void 0;
+  selection = seatId && cardId && index !== void 0 ? {
+    gameId: String(game.id),
+    seatId,
+    index,
+    cardId
+  } : void 0;
+  selectedStoneColor = "self";
+  resetShapeStamp();
+}
+function currentShapeCard(game) {
+  const view = game.shapeCards;
+  if (!view) return void 0;
+  if (view.active) return view.cards[view.active.cardId];
+  const index = selectedShapeCardIndex(game);
+  const seatId = turnHandSeatId(game);
+  const cardId = index !== void 0 && seatId ? view.hands[seatId]?.[index] : void 0;
+  return cardId ? view.cards[cardId] : void 0;
+}
+function currentShapeCardHasBothColors(game) {
+  const card = currentShapeCard(game);
+  return Boolean(card && new Set(card.stones.map((stone) => stone.rel)).size > 1);
+}
+function shapeStoneColor(game) {
+  const card = currentShapeCard(game);
+  if (!card) return "self";
+  const key = `${game.id}:${card.id}`;
+  if (key !== colorCardKey) selectedStoneColor = "self";
+  colorCardKey = key;
+  if (!currentShapeCardHasBothColors(game)) return card.stones[0]?.rel ?? "self";
+  return selectedStoneColor;
+}
+function setShapeStoneColor(color) {
+  selectedStoneColor = color;
+}
+function shapeOpponentTeam(game, team) {
+  return game.seats.find((seat) => !seat.resigned && seat.team !== team)?.team ?? (team === 1 ? 2 : 1);
+}
+function shapePreviewTeam(game) {
+  if (!currentShapeCard(game)) return void 0;
+  const team = game.seats[game.turn]?.team ?? 1;
+  return shapeStoneColor(game) === "self" ? team : shapeOpponentTeam(game, team);
+}
+var stampRotation = 0;
+var stampMirrored = false;
+function isFullShapeMode(game) {
+  return Boolean(game.config.variants?.shapeCardFull);
+}
+function rotateShapeStamp() {
+  stampRotation = (stampRotation + 1) % 4;
+}
+function mirrorShapeStamp() {
+  stampMirrored = !stampMirrored;
+}
+function resetShapeStamp() {
+  stampRotation = 0;
+  stampMirrored = false;
+}
+function stampOrientation(card) {
+  let stones = card.stones.map((stone) => ({
+    ...stone,
+    x: stampMirrored ? -stone.x : stone.x
+  }));
+  for (let turn = 0; turn < stampRotation; turn++) {
+    stones = stones.map((stone) => ({
+      ...stone,
+      x: -stone.y,
+      y: stone.x
+    }));
+  }
+  const minX = Math.min(...stones.map((stone) => stone.x));
+  const minY = Math.min(...stones.map((stone) => stone.y));
+  return stones.map((stone) => ({
+    ...stone,
+    x: stone.x - minX,
+    y: stone.y - minY
+  }));
+}
+function stampStonesAt(card, point) {
+  const stones = stampOrientation(card);
+  const centerX = Math.floor(Math.max(...stones.map((stone) => stone.x)) / 2);
+  const centerY = Math.floor(Math.max(...stones.map((stone) => stone.y)) / 2);
+  return stones.map((stone) => ({
+    x: point.x + stone.x - centerX,
+    y: point.y + stone.y - centerY,
+    rel: stone.rel
+  }));
+}
+
+// client/game/katachi-controls.ts
+var DEFAULTS = {
+  placeButton: "left",
+  rotateKey: "r",
+  mirrorKey: "f"
+};
+function readKatachiControls() {
+  try {
+    const placeButton = localStorage.getItem("baduk:katachi-place-button") === "right" ? "right" : "left";
+    return {
+      placeButton,
+      rotateKey: validKey(localStorage.getItem("baduk:katachi-rotate-key")) ?? DEFAULTS.rotateKey,
+      mirrorKey: validKey(localStorage.getItem("baduk:katachi-mirror-key")) ?? DEFAULTS.mirrorKey
+    };
+  } catch {
+    return {
+      ...DEFAULTS
+    };
+  }
+}
+function saveKatachiControls(controls) {
+  try {
+    localStorage.setItem("baduk:katachi-place-button", controls.placeButton);
+    localStorage.setItem("baduk:katachi-rotate-key", controls.rotateKey);
+    localStorage.setItem("baduk:katachi-mirror-key", controls.mirrorKey);
+  } catch {
+  }
+}
+function placeMouseButton(controls = readKatachiControls()) {
+  return controls.placeButton === "right" ? 2 : 0;
+}
+function rotateMouseButton(controls = readKatachiControls()) {
+  return controls.placeButton === "right" ? 0 : 2;
+}
+function validKey(value) {
+  const key = value?.trim().toLowerCase();
+  return key && key.length === 1 ? key : void 0;
+}
+
+// client/game/shape-cards.ts
+function shapeHandPanelHtml(game, session2, viewingHistory = false, historyEntry) {
+  const view = game.shapeCards;
+  if (!view) return "";
+  if (viewingHistory) return playedCardPanelHtml(game, historyEntry);
+  const handSeat = shapeHandSeat(game, session2);
+  const turnSeat = game.seats[game.turn];
+  const myTurn = !viewingHistory && game.phase === "play" && Boolean(handSeat) && handSeat?.id === turnSeat?.id;
+  const hand = handSeat ? view.hands[handSeat.id] ?? [] : [];
+  const team = handSeat?.team ?? 1;
+  const active = view.active;
+  const activeCard = active ? view.cards[active.cardId] : void 0;
+  const selectedIndex = myTurn ? selectedShapeCardIndex(game) : void 0;
+  const selectedCard = selectedIndex !== void 0 ? view.cards[hand[selectedIndex]] : void 0;
+  const activeIndex = myTurn && active ? hand.indexOf(active.cardId) : -1;
+  const canSelect = myTurn && !active;
+  const status = handStatus(game, {
+    myTurn,
+    hasHand: Boolean(handSeat),
+    activeCard,
+    selectedCard
+  });
+  const opponentActive = active && activeCard && !myTurn ? `<div class="shape-hand-playing">${shapeCardHtml(activeCard, ...teamsFor(game, seatTeam(game, active.seatId)), true)}</div>` : "";
+  const grid = handSeat ? `<div class="shape-hand-grid">${hand.map((cardId, index) => {
+    const card = view.cards[cardId];
+    if (!card) return "";
+    const selected = index === selectedIndex || index === activeIndex;
+    const face = selected && isFullShapeMode(game) ? {
+      ...card,
+      stones: stampOrientation(card)
+    } : card;
+    return shapeCardHtml(face, ...teamsFor(game, team), selected, {
+      index,
+      disabled: !canSelect
+    });
+  }).join("")}</div>` : "";
+  return `
+    <section class="shape-hand-panel ui-stack" aria-label="Katachi hand" data-shape-hand>
+      <h3>${handSeat ? "Your hand" : "Katachi cards"}</h3>
+      <p class="shape-hand-status" aria-live="polite">${status}</p>
+      ${opponentActive}
+      ${grid}
+      ${myTurn ? handActionsHtml(game, Boolean(active), selectedCard !== void 0) : ""}
+      ${handSeat ? ownDeckHtml(view, handSeat.id) : pilesHtml(game)}
+    </section>
+  `;
+}
+function playedCardPanelHtml(game, entry) {
+  const played = entry?.shapeCard;
+  const card = played ? game.shapeCards?.cards[played.cardId] : void 0;
+  const body = played && card ? `<p class="shape-hand-status"><strong>${escapeHtml(seatName(game, played.seatId))}</strong> ${played.discarded ? `discarded <strong>${escapeHtml(card.name)}</strong>.` : played.stone === void 0 ? `played <strong>${escapeHtml(card.name)}</strong>.` : `played <strong>${escapeHtml(card.name)}</strong> \xB7 stone ${played.stone} of ${played.total}.`}</p>
+      <div class="shape-hand-playing">${shapeCardHtml(card, ...teamsFor(game, seatTeam(game, played.seatId)), true)}</div>` : `<p class="shape-hand-status">No card was played on this move.</p>`;
+  return `
+    <section class="shape-hand-panel ui-stack" aria-label="Played card" data-shape-hand>
+      <h3>Played card</h3>
+      ${body}
+    </section>
+  `;
+}
+function ownDeckHtml(view, seatId) {
+  const drawCount = view.seats.find((seat) => seat.seatId === seatId)?.drawCount ?? 0;
+  return `<p class="muted-text">${drawCount} in deck</p>`;
+}
+function pilesHtml(game) {
+  const view = game.shapeCards;
+  return `<ul class="shape-card-piles muted-text">${view.seats.map((seat) => {
+    const lastDiscard = seat.discard.at(-1);
+    return `<li><strong>${escapeHtml(seatName(game, seat.seatId))}</strong> \xB7 ${seat.handCount} in hand \xB7 ${seat.drawCount} in deck${lastDiscard ? ` \xB7 last discard: ${escapeHtml(view.cards[lastDiscard]?.name ?? lastDiscard)}` : ""}</li>`;
+  }).join("")}</ul>`;
+}
+function handStatus(game, state) {
+  const active = game.shapeCards?.active;
+  if (game.phase === "joseki") return "Your cards are ready for when normal play begins.";
+  if (game.phase !== "play") return "";
+  if (state.myTurn && active && state.activeCard) {
+    return `Placing <strong>${escapeHtml(state.activeCard.name)}</strong>: ${active.placed.length} / ${state.activeCard.stones.length} stones, in any order.`;
+  }
+  if (state.myTurn && state.selectedCard && isFullShapeMode(game)) {
+    const controls = readKatachiControls();
+    const place = controls.placeButton === "right" ? "Right-click" : "Left-click";
+    const rotate = controls.placeButton === "right" ? "left-click" : "right-click";
+    return `${place} to place <strong>${escapeHtml(state.selectedCard.name)}</strong>; ${rotate} or ${controls.rotateKey.toUpperCase()} rotates, ${controls.mirrorKey.toUpperCase()} mirrors.`;
+  }
+  if (state.myTurn && state.selectedCard) {
+    return `Click the board to play <strong>${escapeHtml(state.selectedCard.name)}</strong>, or discard it.`;
+  }
+  if (state.myTurn) return "Your turn: select a card.";
+  const name = escapeHtml(seatName(game, game.seats[game.turn]?.id ?? ""));
+  if (active && state.activeCard) {
+    return `${name} is playing <strong>${escapeHtml(state.activeCard.name)}</strong> (${active.placed.length} / ${state.activeCard.stones.length}).`;
+  }
+  return `${name}'s turn.`;
+}
+function handActionsHtml(game, active, selected) {
+  if (!active && !selected) return "";
+  const color = shapeStoneColor(game);
+  const toggle = currentShapeCardHasBothColors(game) ? `<div class="actions shape-card-color" role="group" aria-label="Stone color">
+        <button type="button" class="${color === "self" ? "is-active" : ""}" data-shape-color="self" aria-pressed="${color === "self"}">My stone</button>
+        <button type="button" class="${color === "opponent" ? "is-active" : ""}" data-shape-color="opponent" aria-pressed="${color === "opponent"}">Opponent stone</button>
+      </div>` : "";
+  const placed = game.shapeCards?.active?.placed.length ?? 0;
+  const buttons = active ? `<button type="button" data-shape-undo ${placed === 0 ? "disabled" : ""}>Undo stone</button>
+       <button type="button" data-shape-cancel>Cancel card</button>` : isFullShapeMode(game) ? `<button type="button" data-shape-rotate aria-label="Rotate (R)">Rotate</button>
+       <button type="button" data-shape-mirror aria-label="Mirror (F)">Mirror</button>
+       <button type="button" data-shape-discard>Discard</button>` : `<button type="button" data-shape-discard>Discard</button>`;
+  return `${toggle}<div class="actions shape-hand-actions">${buttons}</div>`;
+}
+function shapeCardHtml(card, team = 1, opponent = 2, selected = false, button) {
+  const stones = card.stones.map((stone) => ({
+    x: stone.x,
+    y: stone.y,
+    color: stone.rel === "self" ? team : opponent
+  }));
+  const bounds2 = shapeCardBounds(stones);
+  const tag = button ? "button" : "span";
+  const buttonAttrs = button ? ` type="button" data-shape-index="${button.index}" aria-pressed="${selected}"${button.disabled ? " disabled" : ""}` : "";
+  return `
+    <${tag} class="j-card shape-card ${selected ? "is-selected" : ""}" data-shape-card-id="${escapeHtml(card.id)}"${buttonAttrs}>
+      <span class="shape-card__name">${escapeHtml(card.name)}</span>
+      <span class="shape-card__frame">${josekiCardBoardHtml(stones, bounds2)}</span>
+      <span class="j-card__meta">${card.stones.length} stones</span>
+    </${tag}>`;
+}
+var MIN_SHAPE_BOARD_LINES = 5;
+function shapeCardBounds(stones) {
+  const axis = (values) => {
+    const min = Math.min(...values);
+    const span = Math.max(...values) - min + 1;
+    const size = Math.max(MIN_SHAPE_BOARD_LINES, span + 2);
+    return {
+      start: min - Math.floor((size - span) / 2),
+      size
+    };
+  };
+  const x = axis(stones.map((stone) => stone.x));
+  const y = axis(stones.map((stone) => stone.y));
+  return {
+    minX: x.start,
+    minY: y.start,
+    width: x.size,
+    height: y.size
+  };
+}
+function shapeHandSeat(game, session2) {
+  const hands = game.shapeCards?.hands ?? {};
+  const owned = game.seats.filter((seat) => seat.playerUuid && seat.playerUuid === session2?.uuid && hands[seat.id]);
+  return owned.find((seat) => seat.id === game.seats[game.turn]?.id) ?? owned[0];
+}
+function teamsFor(game, team) {
+  return [
+    team,
+    shapeOpponentTeam(game, team)
+  ];
+}
+function shapeCardGridHtml(cards) {
+  return `<div class="j-card-grid">${cards.map((card) => `<div class="shape-card-slot">${shapeCardHtml(card)}</div>`).join("")}</div>`;
+}
+function seatTeam(game, seatId) {
+  return game.seats.find((seat) => seat.id === seatId)?.team ?? 1;
+}
+function seatName(game, seatId) {
+  const seat = game.seats.find((seat2) => seat2.id === seatId);
+  return seat?.publicName || seat?.id || seatId;
+}
+
+// client/create/shape-card-dialog.ts
+async function openShapeCardDialog(statusElement2) {
+  const response = await listShapeCards();
+  if (!response.ok) {
+    if (statusElement2) statusElement2.textContent = "Could not load Katachi cards.";
+    return;
+  }
+  const { cards: allCards } = await response.json();
+  const cards = allCards.filter((card) => card.count > 0);
+  const total = cards.reduce((sum, card) => sum + card.count, 0);
+  const dialog = document.createElement("dialog");
+  dialog.className = "ui-dialog joseki-card-dialog";
+  dialog.innerHTML = `
+    <button class="dialog-close" type="button" aria-label="Close">\xD7</button>
+    <h3>Katachi Cards</h3>
+    <p class="ui-muted">Each player shuffles their own ${total}-card copy of this deck.
+      You play a card's stones in your own color, rotated or mirrored any way.</p>
+    <div class="dialog-scroll ui-scroll">${shapeCardGridHtml(cards)}</div>
+  `;
+  document.body.append(dialog);
+  dialog.querySelector(".dialog-close")?.addEventListener("click", () => dialog.close());
+  dialog.addEventListener("close", () => dialog.remove());
+  dialog.showModal();
 }
 
 // client/create/form-bind.ts
@@ -1943,6 +2344,7 @@ function bindCreateGameForm(submitHandler, statusElement2, root = document) {
   }
   root.querySelector(".custom-goban-open")?.addEventListener("click", () => openCustomGobanEditor(statusElement2));
   root.querySelector("[name='circloidGobanMode']")?.addEventListener("change", () => toggleCircloidGoban(root));
+  root.querySelector(".shape-card-open")?.addEventListener("click", () => openShapeCardDialog(statusElement2));
   root.querySelector(".joseki-card-open")?.addEventListener("click", () => openJosekiCardDialog(statusElement2));
   root.querySelector("[data-seat-toggle]")?.addEventListener("click", cycleCreatorSeat);
   for (const input of root.querySelectorAll(".variant-button input")) {
@@ -1995,6 +2397,10 @@ var ALL_VARIANT_RULES = [
   {
     label: "Joseki Card",
     rule: "Players select and place joseki cards in corners before normal play begins."
+  },
+  {
+    label: "Katachi",
+    rule: "Each turn, play a card by placing all of its stones (any rotation or mirror, any order, each a legal move) or discard one, then draw. The game ends when both players pass, when a deck runs out, or both agree to scoring. Options: Full places the whole card at once as a single move (every point must be empty; captures, suicide and ko are checked once for the whole shape). Reshuffle shuffles your discards into a new deck when it runs out, so the game only ends by passing."
   },
   {
     label: "Hidden",
@@ -2118,6 +2524,12 @@ function activeVariantRules(game) {
       rule: "Players select and place joseki cards in corners before normal play begins."
     });
   }
+  if (variants.shapeCards) {
+    rules.push({
+      label: "Katachi",
+      rule: `Hand of ${variants.shapeCardHandSize ?? 4}. ` + (variants.shapeCardFull ? "Full: each turn, play a whole card at once as one move (any rotation or mirror; every point must be empty) or discard one, then draw. " : "Each turn, play a card by placing all of its stones (any rotation or mirror, any order, each a legal move) or discard one, then draw. ") + (variants.shapeCardReshuffle ? "Reshuffle: an empty deck reshuffles your discards, so the game ends when both players pass and agree to scoring." : "The game ends when both players pass, when a deck runs out, or both agree to scoring.")
+    });
+  }
   if (variants.tetris) {
     rules.push({
       label: "Tetris",
@@ -2181,6 +2593,7 @@ function resultText(game) {
   const prefix = colorResultPrefix(stoneColor(game, winnerTeam));
   if (game.endReason === "resign") return `${prefix}+R`;
   if (game.endReason === "timeout") return `${prefix}+T`;
+  if (game.endReason === "unknown") return `${prefix}+`;
   const lastAction = game.history?.at(-1)?.action;
   const wonByResignation = lastAction === "resign" || game.seats.some((seat) => seat.resigned && seat.team !== winnerTeam);
   if (!game.endReason && wonByResignation) return `${prefix}+R`;
@@ -2243,6 +2656,8 @@ function teamColorName(game, team) {
   return nearestColorName(stoneColor(game, team));
 }
 function placementPreviewTeam(game) {
+  const shapeTeam = shapePreviewTeam(game);
+  if (shapeTeam !== void 0) return shapeTeam;
   const activeTeam = game.seats[game.turn]?.team ?? 1;
   return game.config.variants?.zen ? (game.playMoves ?? 0) % 2 + 1 : activeTeam;
 }
@@ -2721,6 +3136,7 @@ function bindGameEvents(options) {
   bindCustomGobanPreview(options);
   bindBoard(options);
   bindJosekiSetup(options);
+  bindShapeCards(options);
   bindActionButtons(options);
   bindHistoryButtons(options);
   const historyKeyController2 = bindHistoryKeyboardControls(options.game, options.historyIndex, options.latestHistoryIndex, options.historyKeyController, options.canNavigateGameHistory, options.navigateGameHistory);
@@ -2757,12 +3173,26 @@ function bindBoard(options) {
   const board = panel2.querySelector(".board");
   let activePointerId;
   let josekiHoverCorner = game.josekiSetup?.currentPlacement?.corner;
+  const showPreview = (event) => {
+    if (!board) return;
+    const card = fullModeShapeCard(game);
+    if (!card) return setBoardPreview(board, game, event, showCoordinates2);
+    clearBoardPreview(board);
+    const point = placementPointFromEvent(board, game, event, showCoordinates2);
+    lastStampPoint = point;
+    showShapeStamp(board, game, point ? stampStonesAt(card, point) : []);
+  };
+  const clearPreview = () => {
+    clearBoardPreview(board);
+    clearShapeStamp(board);
+    lastStampPoint = void 0;
+  };
   board?.addEventListener("contextmenu", (event) => event.preventDefault());
   board?.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     activePointerId = event.pointerId;
     board.setPointerCapture(event.pointerId);
-    setBoardPreview(board, game, event, showCoordinates2);
+    showPreview(event);
   });
   board?.addEventListener("pointermove", (event) => {
     if (game.phase === "joseki" && game.josekiSetup?.phase === "place") {
@@ -2785,26 +3215,26 @@ function bindBoard(options) {
     }
     if (activePointerId !== event.pointerId) {
       if (activePointerId === void 0 && event.pointerType === "mouse") {
-        setBoardPreview(board, game, event, showCoordinates2);
+        showPreview(event);
       }
       return;
     }
     event.preventDefault();
-    setBoardPreview(board, game, event, showCoordinates2);
+    showPreview(event);
   });
   board?.addEventListener("pointerleave", () => {
-    if (activePointerId === void 0) clearBoardPreview(board);
+    if (activePointerId === void 0) clearPreview();
   });
   board?.addEventListener("pointercancel", () => {
     activePointerId = void 0;
-    clearBoardPreview(board);
+    clearPreview();
   });
   board?.addEventListener("pointerup", async (event) => {
     if (activePointerId !== event.pointerId) return;
     event.preventDefault();
     activePointerId = void 0;
     const point = placementPointFromEvent(board, game, event, showCoordinates2);
-    clearBoardPreview(board);
+    clearPreview();
     if (!point || viewingHistory || game.phase === "joseki") return;
     if (game.phase === "hidden") {
       await sendAction2(game.id, withCurrentSeat(game, session2, {
@@ -2822,6 +3252,16 @@ function bindBoard(options) {
         x: point.x,
         y: point.y
       }));
+    } else if (game.phase === "play" && game.shapeCards && isFullShapeMode(game)) {
+      if (event.button === rotateMouseButton() && fullModeShapeCard(game)) {
+        rotateShapeStamp();
+        refreshShapeHand?.();
+        showPreview(event);
+      } else if (event.button === placeMouseButton()) {
+        await playWholeShapeCard(options, point);
+      }
+    } else if (game.phase === "play" && game.shapeCards) {
+      await placeShapeStone(options, point);
     } else if (game.phase === "play") {
       await sendAction2(game.id, withCurrentSeat(game, session2, {
         type: "place",
@@ -2922,6 +3362,154 @@ function bindJosekiSetup({ panel: panel2, game, session: session2, sendAction: s
       }));
     });
   }
+}
+var shapeKeyController;
+var refreshShapeHand;
+var lastStampPoint;
+function bindShapeCards(options) {
+  const { panel: panel2, game, session: session2, sendAction: sendAction2, viewingHistory } = options;
+  const hand = panel2.querySelector("[data-shape-hand]");
+  if (!hand) return;
+  const send = (action) => sendAction2(game.id, withCurrentSeat(game, session2, action));
+  const refresh = () => {
+    hand.outerHTML = shapeHandPanelHtml(game, session2, viewingHistory);
+    const board = panel2.querySelector(".board");
+    const team = placementPreviewTeam(game);
+    board?.setAttribute("data-preview-team", String(team));
+    board?.style.setProperty("--preview-color", stoneColor(game, team));
+    bindShapeCards(options);
+    const card = fullModeShapeCard(game);
+    if (board && card && lastStampPoint) {
+      showShapeStamp(board, game, stampStonesAt(card, lastStampPoint));
+    }
+  };
+  refreshShapeHand = refresh;
+  for (const card of hand.querySelectorAll("[data-shape-index]")) {
+    card.addEventListener("click", () => {
+      if (card.disabled) return;
+      const index = Number(card.dataset.shapeIndex);
+      selectShapeCard(game, selectedShapeCardIndex(game) === index ? void 0 : index);
+      refresh();
+    });
+  }
+  hand.querySelector("[data-shape-discard]")?.addEventListener("click", () => {
+    const card = currentShapeCard(game);
+    if (!card) return;
+    selectShapeCard(game, void 0);
+    void send({
+      type: "discardShapeCard",
+      cardId: card.id
+    });
+  });
+  const turnStamp = (change) => {
+    change();
+    refresh();
+  };
+  hand.querySelector("[data-shape-rotate]")?.addEventListener("click", () => {
+    turnStamp(rotateShapeStamp);
+  });
+  hand.querySelector("[data-shape-mirror]")?.addEventListener("click", () => {
+    turnStamp(mirrorShapeStamp);
+  });
+  shapeKeyController?.abort();
+  shapeKeyController = new AbortController();
+  if (fullModeShapeCard(game)) {
+    document.addEventListener("keydown", (event) => {
+      const target = event.target;
+      if (target?.closest("input, textarea, select, [contenteditable]") || event.metaKey || event.ctrlKey) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      const controls = readKatachiControls();
+      if (key === controls.rotateKey) turnStamp(rotateShapeStamp);
+      else if (key === controls.mirrorKey) turnStamp(mirrorShapeStamp);
+    }, {
+      signal: shapeKeyController.signal
+    });
+  }
+  hand.querySelector("[data-shape-undo]")?.addEventListener("click", () => {
+    void send({
+      type: "undoShapeStone"
+    });
+  });
+  hand.querySelector("[data-shape-cancel]")?.addEventListener("click", () => {
+    void send({
+      type: "cancelShapeCard"
+    });
+  });
+  for (const button of hand.querySelectorAll("[data-shape-color]")) {
+    button.addEventListener("click", () => {
+      setShapeStoneColor(button.dataset.shapeColor === "opponent" ? "opponent" : "self");
+      refresh();
+    });
+  }
+}
+function fullModeShapeCard(game) {
+  if (!isFullShapeMode(game) || game.phase !== "play" || game.shapeCards?.active) return void 0;
+  return selectedShapeCardIndex(game) === void 0 ? void 0 : currentShapeCard(game);
+}
+async function playWholeShapeCard({ game, session: session2, sendAction: sendAction2, statusElement: statusElement2 }, point) {
+  const card = fullModeShapeCard(game);
+  if (!card) return;
+  const stones = stampStonesAt(card, point);
+  const fits = stones.every((stone) => stone.x >= 0 && stone.y >= 0 && stone.x < game.boardWidth && stone.y < game.boardHeight);
+  if (!fits) {
+    if (statusElement2) statusElement2.textContent = "The card doesn't fit there.";
+    return;
+  }
+  await sendAction2(game.id, withCurrentSeat(game, session2, {
+    type: "playShapeCard",
+    cardId: card.id,
+    stones
+  }));
+}
+function showShapeStamp(board, game, stones) {
+  clearShapeStamp(board);
+  const team = game.seats[game.turn]?.team ?? 1;
+  for (const stone of stones) {
+    if (stone.x < 0 || stone.y < 0 || stone.x >= game.boardWidth || stone.y >= game.boardHeight) {
+      continue;
+    }
+    const index = stone.y * game.boardWidth + stone.x;
+    if (game.board[index] !== 0) continue;
+    const point = board.querySelector(`.point[data-index='${index}']`);
+    if (!point) continue;
+    const color = stone.rel === "self" ? team : shapeOpponentTeam(game, team);
+    point.dataset.shapeStamp = "true";
+    point.dataset.originalColor = point.dataset.color ?? "0";
+    point.dataset.originalStoneColor = point.style.getPropertyValue("--stone-color");
+    point.dataset.originalOpacity = point.style.getPropertyValue("--stone-opacity");
+    point.dataset.color = String(color);
+    point.style.setProperty("--stone-color", stoneColor(game, color));
+    point.style.setProperty("--stone-opacity", "0.5");
+  }
+}
+function clearShapeStamp(board) {
+  for (const point of board?.querySelectorAll(".point[data-shape-stamp]") ?? []) {
+    point.dataset.color = point.dataset.originalColor ?? "0";
+    point.style.setProperty("--stone-color", point.dataset.originalStoneColor ?? "");
+    point.style.setProperty("--stone-opacity", point.dataset.originalOpacity || "1");
+    delete point.dataset.shapeStamp;
+    delete point.dataset.originalColor;
+    delete point.dataset.originalStoneColor;
+    delete point.dataset.originalOpacity;
+  }
+}
+async function placeShapeStone({ game, session: session2, sendAction: sendAction2 }, point) {
+  const card = currentShapeCard(game);
+  if (!card) return;
+  const stoneColor2 = currentShapeCardHasBothColors(game) ? shapeStoneColor(game) : void 0;
+  await sendAction2(game.id, withCurrentSeat(game, session2, {
+    type: "place",
+    x: point.x,
+    y: point.y,
+    ...game.shapeCards?.active ? {} : {
+      cardId: card.id
+    },
+    ...stoneColor2 ? {
+      stoneColor: stoneColor2
+    } : {}
+  }));
 }
 function bindActionButtons({ panel: panel2, game, session: session2, sendAction: sendAction2, toggleCoordinates: toggleCoordinates2 }) {
   panel2.querySelector("[data-toggle-coordinates]")?.addEventListener("click", toggleCoordinates2);
@@ -3149,10 +3737,11 @@ function territoryShadeIndexes(game, boardColors) {
 
 // client/game/render.ts
 function gameViewHtml(context) {
-  const { game, session: session2, boardColors, boardOpacity, canNavigateHistory, visualHistoryIndex, playableHistoryIndex, playableHistoryCount, viewingHistory, passOrDoneDisabled, canUsePlayActions, canUndo, canResign, showCoordinates: showCoordinates2 } = context;
+  const { game, session: session2, boardColors, boardOpacity, canNavigateHistory, visualHistoryIndex, playableHistoryIndex, playableHistoryCount, viewingHistory, passOrDoneDisabled, canUsePlayActions, canUndo, canResign, showCoordinates: showCoordinates2, historyEntry } = context;
   const edge = boardEdge(showCoordinates2, game.boardWidth, game.boardHeight);
   const overlay = josekiPlacementOverlay(game, boardColors, boardOpacity);
   const result = resultText(game);
+  const shapeCardInProgress = Boolean(game.shapeCards?.active);
   return `
     <div class="game-title-row">
       <h2>${escapeHtml(game.config.name || `Game #${game.id}`)}</h2>
@@ -3162,11 +3751,13 @@ function gameViewHtml(context) {
     </div>
     <dialog class="ui-dialog game-info-dialog">
       <button class="dialog-close" type="button" aria-label="Close">\xD7</button>
-      ${gameInfoHtml(game)}
-      ${variantRulesHelpHtml(game)}
-      ${scoringHelpHtml()}
+      <div class="dialog-scroll ui-scroll">
+        ${gameInfoHtml(game)}
+        ${variantRulesHelpHtml(game)}
+        ${scoringHelpHtml()}
+      </div>
     </dialog>
-    <div class="game-view">
+    <div class="game-view ${game.shapeCards ? "has-shape-hand" : ""}">
       <section class="board-panel" aria-label="Board">
         <div class="board ${result ? "has-result" : ""}" data-preview-team="${placementPreviewTeam(game)}" data-coordinates="${showCoordinates2}" style="--board-step: ${boardStep(game.boardWidth, edge)}%; --preview-color: ${stoneColor(game, placementPreviewTeam(game))}">
           ${boardGridHtml(game, showCoordinates2)}
@@ -3176,6 +3767,7 @@ function gameViewHtml(context) {
           ${result ? `<div class="game-result-overlay" aria-live="polite">${escapeHtml(result)}</div>` : ""}
         </div>
       </section>
+      ${shapeHandPanelHtml(game, session2, viewingHistory, historyEntry)}
       <section class="players-panel ui-stack" aria-label="Players and seats">
         <button class="players-toggle players-panel__toggle" type="button" aria-expanded="false">Players</button>
         <div class="history-actions players-panel__review" ${canNavigateHistory ? "" : "hidden"}>
@@ -3191,8 +3783,8 @@ function gameViewHtml(context) {
           ${teamSeatsHtml(game, session2)}
         </div>
         <div class="actions players-panel__actions" ${game.phase === "done" || game.phase === "hidden" || viewingHistory || !game.seats.every((seat) => seat.playerUuid) || (game.phase === "scoring" ? passOrDoneDisabled : !canUsePlayActions) ? "hidden" : ""}>
-          <button data-action="${game.phase === "scoring" ? "acceptScore" : "pass"}" ${passOrDoneDisabled ? "disabled" : ""}>${game.phase === "scoring" ? "Done" : "Pass"}</button>
-          <button data-action="cancel" ${!canUndo ? "disabled" : ""}>Undo</button>
+          <button data-action="${game.phase === "scoring" ? "acceptScore" : "pass"}" ${passOrDoneDisabled || shapeCardInProgress ? "disabled" : ""}>${game.phase === "scoring" ? "Done" : "Pass"}</button>
+          <button data-action="cancel" ${!canUndo || shapeCardInProgress ? "disabled" : ""}>Undo</button>
           <button data-action="resign" ${!canResign ? "disabled" : ""}>Resign</button>
         </div>
         <div class="players-panel__metadata">${gameInfoHtml(game)}</div>
@@ -3242,12 +3834,14 @@ function josekiSetupHtml(game, session2) {
         <p>${selected.size} / ${requiredCount} selected</p>
         <button data-joseki-selection-open type="button" ${canSelect ? "" : "disabled"}>Choose cards</button>
       </div>
-      <dialog class="ui-dialog ui-scroll joseki-selection-dialog" data-joseki-selection-dialog>
+      <dialog class="ui-dialog joseki-selection-dialog" data-joseki-selection-dialog>
         <button class="dialog-close" data-joseki-selection-close type="button" aria-label="Close">\xD7</button>
         <h3>${pickText}</h3>
         <p class="muted-text">Select exactly ${requiredCount} card${requiredCount === 1 ? "" : "s"}. Your selected cards are highlighted.</p>
         <p>${selected.size} / ${requiredCount} selected \xB7 ${seconds}s remaining</p>
-        ${josekiCardGridHtml(setup.availableCards, selected)}
+        <div class="dialog-scroll ui-scroll">
+          ${josekiCardGridHtml(setup.availableCards, selected)}
+        </div>
         <div class="actions joseki-selection-actions">
           <button data-joseki-selection-confirm type="button" ${selected.size === requiredCount ? "" : "disabled"}>Confirm selection</button>
         </div>
@@ -3437,7 +4031,7 @@ function openJoinedRulesDialog(game) {
   dialog.innerHTML = `
     <button class="dialog-close" type="button" aria-label="Close">\xD7</button>
     <h3>Variant rules</h3>
-    <div class="invite-rules">${rulesHtml}</div>
+    <div class="invite-rules dialog-scroll ui-scroll">${rulesHtml}</div>
   `;
   document.body.append(dialog);
   dialog.querySelector(".dialog-close")?.addEventListener("click", () => dialog.close());
@@ -3594,6 +4188,26 @@ function timeoutCue(game, remaining) {
   };
 }
 
+// client/ui/dialog.ts
+function installDialogLightDismiss(root = document) {
+  let pressedBackdrop;
+  root.addEventListener("pointerdown", (event) => {
+    pressedBackdrop = backdropDialog(event);
+  });
+  root.addEventListener("click", (event) => {
+    const dialog = backdropDialog(event);
+    if (dialog && dialog === pressedBackdrop) dialog.close();
+    pressedBackdrop = void 0;
+  });
+}
+function backdropDialog(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLDialogElement) || !target.open) return void 0;
+  const rect = target.getBoundingClientRect();
+  const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+  return inside ? void 0 : target;
+}
+
 // client/main.ts
 var statusElement = document.querySelector("#status");
 var nameForm = document.querySelector("#name-form");
@@ -3643,6 +4257,7 @@ applySavedTheme();
 updateThemeToggle(themeToggle);
 updateCoordinateToggle();
 updateStoneShadowToggle();
+installDialogLightDismiss();
 var landingHelpBody = document.querySelector("[data-landing-help-body]");
 if (landingHelpBody) landingHelpBody.innerHTML = allVariantRulesHelpHtml();
 appRemake?.addEventListener("click", remakeCurrentGame);
@@ -3668,6 +4283,7 @@ soundToggle?.addEventListener("click", (event) => {
   toggleSoundPopover();
 });
 soundControl?.addEventListener("click", (event) => event.stopPropagation());
+bindKatachiControlsPopover();
 stoneVolume?.addEventListener("input", () => {
   setStoneVolume(Number(stoneVolume.value));
   localStorage.setItem("baduk:stone-volume", stoneVolume.value);
@@ -3820,7 +4436,7 @@ function renderGame(game) {
   const helpWasOpen = document.querySelector(".game-info-dialog")?.open ?? false;
   const josekiSelectionDialog = document.querySelector("[data-joseki-selection-dialog]");
   const josekiSelectionWasOpen = josekiSelectionDialog?.open ?? false;
-  const josekiSelectionScrollTop = josekiSelectionDialog?.scrollTop ?? 0;
+  const josekiSelectionScrollTop = josekiSelectionDialog?.querySelector(".dialog-scroll")?.scrollTop ?? 0;
   maybePlayStoneSound(currentGame, game);
   if (game.phase !== "play") {
     stopCountdownAudio();
@@ -3834,7 +4450,7 @@ function renderGame(game) {
   clearTimeout(gameClockTimer);
   shell.classList.add("game-layout");
   updateGameLayoutMode(shell);
-  const { latestHistoryIndex, historyIndex, viewingHistory, boardColors, boardOpacity, visualHistoryIndex, playableHistoryCount, playableHistoryIndex, canNavigateHistory, canUsePlayActions, canUndo, canResign, passOrDoneDisabled } = gameHistoryView(game, session, historyViewByGame);
+  const { rawHistory, latestHistoryIndex, historyIndex, viewingHistory, boardColors, boardOpacity, visualHistoryIndex, playableHistoryCount, playableHistoryIndex, canNavigateHistory, canUsePlayActions, canUndo, canResign, passOrDoneDisabled } = gameHistoryView(game, session, historyViewByGame);
   const displayGame = viewingHistory ? {
     ...game,
     phase: "play",
@@ -3844,6 +4460,7 @@ function renderGame(game) {
   panel.innerHTML = gameViewHtml({
     game: displayGame,
     session,
+    historyEntry: viewingHistory ? rawHistory[historyIndex] : void 0,
     boardColors,
     boardOpacity,
     canNavigateHistory,
@@ -3881,7 +4498,8 @@ function renderGame(game) {
   const nextJosekiSelectionDialog = panel.querySelector("[data-joseki-selection-dialog]");
   if (josekiSelectionWasOpen && nextJosekiSelectionDialog) {
     if (!nextJosekiSelectionDialog.open) nextJosekiSelectionDialog.showModal();
-    nextJosekiSelectionDialog.scrollTop = josekiSelectionScrollTop;
+    const scroller = nextJosekiSelectionDialog.querySelector(".dialog-scroll");
+    if (scroller) scroller.scrollTop = josekiSelectionScrollTop;
   }
   if (game.phase === "play" && game.clockUpdatedAt !== void 0 && game.config.time?.system && game.config.time.system !== "none") {
     gameClockTimer = setTimeout(() => updateGameClock(game), 1e3);
@@ -3936,6 +4554,51 @@ function readCountdownSoundSelection() {
 }
 function parseCountdownSound(value) {
   return value === "chinese" || value === "beep" || value === "off" ? value : "english";
+}
+function bindKatachiControlsPopover() {
+  const control = document.querySelector("#katachi-controls");
+  const toggle = document.querySelector("#katachi-controls-toggle");
+  const popover = document.querySelector("#katachi-controls-popover");
+  const placeButton = document.querySelector("#katachi-place-button");
+  const rotateKey = document.querySelector("#katachi-rotate-key");
+  const mirrorKey = document.querySelector("#katachi-mirror-key");
+  if (!control || !toggle || !popover || !placeButton || !rotateKey || !mirrorKey) return;
+  const fill = () => {
+    const controls = readKatachiControls();
+    placeButton.value = controls.placeButton;
+    rotateKey.value = controls.rotateKey.toUpperCase();
+    mirrorKey.value = controls.mirrorKey.toUpperCase();
+  };
+  const save = () => {
+    const current = readKatachiControls();
+    const key = (input, fallback) => input.value.trim().toLowerCase() || fallback;
+    saveKatachiControls({
+      placeButton: placeButton.value === "right" ? "right" : "left",
+      rotateKey: key(rotateKey, current.rotateKey),
+      mirrorKey: key(mirrorKey, current.mirrorKey)
+    });
+    fill();
+  };
+  fill();
+  toggle.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const open = popover.hidden;
+    popover.hidden = !open;
+    toggle.setAttribute("aria-expanded", String(open));
+  });
+  control.addEventListener("click", (event) => event.stopPropagation());
+  document.addEventListener("click", () => {
+    popover.hidden = true;
+    toggle.setAttribute("aria-expanded", "false");
+  });
+  placeButton.addEventListener("change", save);
+  for (const input of [
+    rotateKey,
+    mirrorKey
+  ]) {
+    input.addEventListener("input", save);
+    input.addEventListener("focus", () => input.select());
+  }
 }
 function toggleSoundPopover() {
   if (!soundPopover || !soundToggle) return;

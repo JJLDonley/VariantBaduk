@@ -18,6 +18,11 @@ const ALL_VARIANT_RULES: VariantRule[] = [
     rule: "Players select and place joseki cards in corners before normal play begins.",
   },
   {
+    label: "Katachi",
+    rule:
+      "Each turn, play a card by placing all of its stones (any rotation or mirror, any order, each a legal move) or discard one, then draw. The game ends when both players pass, when a deck runs out, or both agree to scoring. Options: Full places the whole card at once as a single move (every point must be empty; captures, suicide and ko are checked once for the whole shape). Reshuffle shuffles your discards into a new deck when it runs out, so the game only ends by passing.",
+  },
+  {
     label: "Hidden",
     rule:
       "Players secretly pre-place stones before normal play begins; unique hidden stones remain hidden until revealed.",
@@ -149,6 +154,18 @@ function activeVariantRules(game: Game): VariantRule[] {
     rules.push({
       label: "Joseki Card",
       rule: "Players select and place joseki cards in corners before normal play begins.",
+    });
+  }
+  if (variants.shapeCards) {
+    rules.push({
+      label: "Katachi",
+      rule: `Hand of ${variants.shapeCardHandSize ?? 4}. ` +
+        (variants.shapeCardFull
+          ? "Full: each turn, play a whole card at once as one move (any rotation or mirror; every point must be empty) or discard one, then draw. "
+          : "Each turn, play a card by placing all of its stones (any rotation or mirror, any order, each a legal move) or discard one, then draw. ") +
+        (variants.shapeCardReshuffle
+          ? "Reshuffle: an empty deck reshuffles your discards, so the game ends when both players pass and agree to scoring."
+          : "The game ends when both players pass, when a deck runs out, or both agree to scoring."),
     });
   }
   if (variants.tetris) {

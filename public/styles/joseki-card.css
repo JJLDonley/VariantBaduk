@@ -5,8 +5,7 @@
 
 .joseki-card-dialog,
 .joseki-selection-dialog {
-  max-block-size: min(44rem, calc(100vh - 2rem));
-  overflow: auto;
+  max-block-size: min(44rem, calc(100dvh - 2rem));
 }
 
 .j-card::-webkit-scrollbar {

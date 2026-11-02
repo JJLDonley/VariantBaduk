@@ -10,7 +10,7 @@ export async function openJosekiCardDialog(statusElement: Element | null): Promi
   }
   const { cards } = await readJosekiCards(response);
   const dialog = document.createElement("dialog");
-  dialog.className = "ui-dialog ui-scroll joseki-card-dialog";
+  dialog.className = "ui-dialog joseki-card-dialog";
   dialog.innerHTML = josekiCardDialogHtml(cards);
   document.body.append(dialog);
   dialog.querySelector(".dialog-close")?.addEventListener("click", () => dialog.close());
@@ -23,6 +23,6 @@ function josekiCardDialogHtml(cards: JosekiCard[]): string {
     <button class="dialog-close" type="button" aria-label="Close">×</button>
     <h3>Joseki Cards</h3>
     <p class="ui-muted">Preview available cards. Selection and pre-game placement are next.</p>
-    ${josekiCardGridHtml(cards)}
+    <div class="dialog-scroll ui-scroll">${josekiCardGridHtml(cards)}</div>
   `;
 }

@@ -1,0 +1,7 @@
+ID=diagonal-jump
+NAME=Hook
+COUNT=1
+STONES=
+B[aa];
+B[bb];
+B[bd];

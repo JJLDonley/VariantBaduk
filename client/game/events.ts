@@ -6,6 +6,22 @@ import { copyText } from "../ui/clipboard.ts";
 import { clearJosekiCardHover, hoverJosekiCardOnBoard } from "./joseki-placement.ts";
 import { openCustomGobanPreview } from "../create/custom-goban.ts";
 import { bindHistoryKeyboardControls, type HistoryNavigationAction } from "./history-controls.ts";
+import { placementPreviewTeam, stoneColor } from "./display.ts";
+import {
+  currentShapeCard,
+  currentShapeCardHasBothColors,
+  isFullShapeMode,
+  mirrorShapeStamp,
+  rotateShapeStamp,
+  selectedShapeCardIndex,
+  selectShapeCard,
+  setShapeStoneColor,
+  shapeOpponentTeam,
+  shapeStoneColor,
+  stampStonesAt,
+} from "./shape-card-state.ts";
+import { shapeHandPanelHtml } from "./shape-cards.ts";
+import { placeMouseButton, readKatachiControls, rotateMouseButton } from "./katachi-controls.ts";
 
 type BindGameEventsOptions = {
   panel: ParentNode;
@@ -37,6 +53,7 @@ export function bindGameEvents(options: BindGameEventsOptions): AbortController 
   bindCustomGobanPreview(options);
   bindBoard(options);
   bindJosekiSetup(options);
+  bindShapeCards(options);
   bindActionButtons(options);
   bindHistoryButtons(options);
   const historyKeyController = bindHistoryKeyboardControls(
@@ -91,12 +108,27 @@ function bindBoard(options: BindGameEventsOptions): void {
   const board = panel.querySelector<HTMLElement>(".board");
   let activePointerId: number | undefined;
   let josekiHoverCorner = game.josekiSetup?.currentPlacement?.corner;
+  // Katachi "Full": a see-through copy of the whole card follows the pointer.
+  const showPreview = (event: MouseEvent) => {
+    if (!board) return;
+    const card = fullModeShapeCard(game);
+    if (!card) return setBoardPreview(board, game, event, showCoordinates);
+    clearBoardPreview(board);
+    const point = placementPointFromEvent(board, game, event, showCoordinates);
+    lastStampPoint = point;
+    showShapeStamp(board, game, point ? stampStonesAt(card, point) : []);
+  };
+  const clearPreview = () => {
+    clearBoardPreview(board);
+    clearShapeStamp(board);
+    lastStampPoint = undefined;
+  };
   board?.addEventListener("contextmenu", (event) => event.preventDefault());
   board?.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     activePointerId = event.pointerId;
     board.setPointerCapture(event.pointerId);
-    setBoardPreview(board, game, event, showCoordinates);
+    showPreview(event);
   });
   board?.addEventListener("pointermove", (event) => {
     if (game.phase === "joseki" && game.josekiSetup?.phase === "place") {
@@ -119,26 +151,26 @@ function bindBoard(options: BindGameEventsOptions): void {
     }
     if (activePointerId !== event.pointerId) {
       if (activePointerId === undefined && event.pointerType === "mouse") {
-        setBoardPreview(board, game, event, showCoordinates);
+        showPreview(event);
       }
       return;
     }
     event.preventDefault();
-    setBoardPreview(board, game, event, showCoordinates);
+    showPreview(event);
   });
   board?.addEventListener("pointerleave", () => {
-    if (activePointerId === undefined) clearBoardPreview(board);
+    if (activePointerId === undefined) clearPreview();
   });
   board?.addEventListener("pointercancel", () => {
     activePointerId = undefined;
-    clearBoardPreview(board);
+    clearPreview();
   });
   board?.addEventListener("pointerup", async (event) => {
     if (activePointerId !== event.pointerId) return;
     event.preventDefault();
     activePointerId = undefined;
     const point = placementPointFromEvent(board, game, event, showCoordinates);
-    clearBoardPreview(board);
+    clearPreview();
     if (!point || viewingHistory || game.phase === "joseki") return;
     if (game.phase === "hidden") {
       await sendAction(
@@ -160,6 +192,18 @@ function bindBoard(options: BindGameEventsOptions): void {
           y: point.y,
         }),
       );
+    } else if (game.phase === "play" && game.shapeCards && isFullShapeMode(game)) {
+      // Full mode: one mouse button places the card, the other rotates it (swappable
+      // in the Katachi controls settings).
+      if (event.button === rotateMouseButton() && fullModeShapeCard(game)) {
+        rotateShapeStamp();
+        refreshShapeHand?.();
+        showPreview(event);
+      } else if (event.button === placeMouseButton()) {
+        await playWholeShapeCard(options, point);
+      }
+    } else if (game.phase === "play" && game.shapeCards) {
+      await placeShapeStone(options, point);
     } else if (game.phase === "play") {
       await sendAction(
         game.id,
@@ -275,6 +319,174 @@ function bindJosekiSetup({ panel, game, session, sendAction }: BindGameEventsOpt
       );
     });
   }
+}
+
+let shapeKeyController: AbortController | undefined;
+let refreshShapeHand: (() => void) | undefined;
+let lastStampPoint: { x: number; y: number } | undefined;
+
+function bindShapeCards(options: BindGameEventsOptions): void {
+  const { panel, game, session, sendAction, viewingHistory } = options;
+  const hand = panel.querySelector<HTMLElement>("[data-shape-hand]");
+  if (!hand) return;
+  const send = (action: GameAction) => sendAction(game.id, withCurrentSeat(game, session, action));
+  // Selection and the color toggle are local until the player acts, so only the hand
+  // column (and the board's hover color) is redrawn.
+  const refresh = () => {
+    hand.outerHTML = shapeHandPanelHtml(game, session, viewingHistory);
+    const board = panel.querySelector<HTMLElement>(".board");
+    const team = placementPreviewTeam(game);
+    board?.setAttribute("data-preview-team", String(team));
+    board?.style.setProperty("--preview-color", stoneColor(game, team));
+    bindShapeCards(options);
+    // Redraw the stamp where the pointer is, in its new rotation/mirror.
+    const card = fullModeShapeCard(game);
+    if (board && card && lastStampPoint) {
+      showShapeStamp(board, game, stampStonesAt(card, lastStampPoint));
+    }
+  };
+  refreshShapeHand = refresh;
+  for (const card of hand.querySelectorAll<HTMLButtonElement>("[data-shape-index]")) {
+    card.addEventListener("click", () => {
+      if (card.disabled) return;
+      const index = Number(card.dataset.shapeIndex);
+      selectShapeCard(game, selectedShapeCardIndex(game) === index ? undefined : index);
+      refresh();
+    });
+  }
+  hand.querySelector("[data-shape-discard]")?.addEventListener("click", () => {
+    const card = currentShapeCard(game);
+    if (!card) return;
+    selectShapeCard(game, undefined);
+    void send({ type: "discardShapeCard", cardId: card.id });
+  });
+  const turnStamp = (change: () => void) => {
+    change();
+    refresh();
+  };
+  hand.querySelector("[data-shape-rotate]")?.addEventListener("click", () => {
+    turnStamp(rotateShapeStamp);
+  });
+  hand.querySelector("[data-shape-mirror]")?.addEventListener("click", () => {
+    turnStamp(mirrorShapeStamp);
+  });
+  shapeKeyController?.abort();
+  shapeKeyController = new AbortController();
+  if (fullModeShapeCard(game)) {
+    document.addEventListener("keydown", (event) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.closest("input, textarea, select, [contenteditable]") || event.metaKey ||
+        event.ctrlKey
+      ) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      const controls = readKatachiControls();
+      if (key === controls.rotateKey) turnStamp(rotateShapeStamp);
+      else if (key === controls.mirrorKey) turnStamp(mirrorShapeStamp);
+    }, { signal: shapeKeyController.signal });
+  }
+  hand.querySelector("[data-shape-undo]")?.addEventListener("click", () => {
+    void send({ type: "undoShapeStone" });
+  });
+  hand.querySelector("[data-shape-cancel]")?.addEventListener("click", () => {
+    void send({ type: "cancelShapeCard" });
+  });
+  for (const button of hand.querySelectorAll<HTMLButtonElement>("[data-shape-color]")) {
+    button.addEventListener("click", () => {
+      setShapeStoneColor(button.dataset.shapeColor === "opponent" ? "opponent" : "self");
+      refresh();
+    });
+  }
+}
+
+/** The selected card when the player can stamp it now (Full mode, own turn). */
+function fullModeShapeCard(game: Game) {
+  if (!isFullShapeMode(game) || game.phase !== "play" || game.shapeCards?.active) return undefined;
+  return selectedShapeCardIndex(game) === undefined ? undefined : currentShapeCard(game);
+}
+
+/** Full mode: one click sends every stone of the card as a single move. */
+async function playWholeShapeCard(
+  { game, session, sendAction, statusElement }: BindGameEventsOptions,
+  point: { x: number; y: number },
+): Promise<void> {
+  const card = fullModeShapeCard(game);
+  if (!card) return;
+  const stones = stampStonesAt(card, point);
+  const fits = stones.every((stone) =>
+    stone.x >= 0 && stone.y >= 0 && stone.x < game.boardWidth && stone.y < game.boardHeight
+  );
+  if (!fits) {
+    if (statusElement) statusElement.textContent = "The card doesn't fit there.";
+    return;
+  }
+  await sendAction(
+    game.id,
+    withCurrentSeat(game, session, { type: "playShapeCard", cardId: card.id, stones }),
+  );
+}
+
+function showShapeStamp(
+  board: Element,
+  game: Game,
+  stones: Array<{ x: number; y: number; rel: "self" | "opponent" }>,
+): void {
+  clearShapeStamp(board);
+  const team = game.seats[game.turn]?.team ?? 1;
+  for (const stone of stones) {
+    if (stone.x < 0 || stone.y < 0 || stone.x >= game.boardWidth || stone.y >= game.boardHeight) {
+      continue;
+    }
+    const index = stone.y * game.boardWidth + stone.x;
+    if (game.board[index] !== 0) continue;
+    const point = board.querySelector<HTMLElement>(`.point[data-index='${index}']`);
+    if (!point) continue;
+    const color = stone.rel === "self" ? team : shapeOpponentTeam(game, team);
+    point.dataset.shapeStamp = "true";
+    point.dataset.originalColor = point.dataset.color ?? "0";
+    point.dataset.originalStoneColor = point.style.getPropertyValue("--stone-color");
+    point.dataset.originalOpacity = point.style.getPropertyValue("--stone-opacity");
+    point.dataset.color = String(color);
+    point.style.setProperty("--stone-color", stoneColor(game, color));
+    point.style.setProperty("--stone-opacity", "0.5");
+  }
+}
+
+function clearShapeStamp(board: Element | null | undefined): void {
+  for (const point of board?.querySelectorAll<HTMLElement>(".point[data-shape-stamp]") ?? []) {
+    point.dataset.color = point.dataset.originalColor ?? "0";
+    point.style.setProperty("--stone-color", point.dataset.originalStoneColor ?? "");
+    point.style.setProperty("--stone-opacity", point.dataset.originalOpacity || "1");
+    delete point.dataset.shapeStamp;
+    delete point.dataset.originalColor;
+    delete point.dataset.originalStoneColor;
+    delete point.dataset.originalOpacity;
+  }
+}
+
+/**
+ * Board click in a Shape Cards game. With a selected card (no card in progress yet) the
+ * stone carries the card id, so one click both places the first stone and locks the card.
+ */
+async function placeShapeStone(
+  { game, session, sendAction }: BindGameEventsOptions,
+  point: { x: number; y: number },
+): Promise<void> {
+  const card = currentShapeCard(game);
+  if (!card) return;
+  const stoneColor = currentShapeCardHasBothColors(game) ? shapeStoneColor(game) : undefined;
+  await sendAction(
+    game.id,
+    withCurrentSeat(game, session, {
+      type: "place",
+      x: point.x,
+      y: point.y,
+      ...(game.shapeCards?.active ? {} : { cardId: card.id }),
+      ...(stoneColor ? { stoneColor } : {}),
+    }),
+  );
 }
 
 function bindActionButtons(

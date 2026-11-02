@@ -222,6 +222,17 @@ export function updateVariantOptions(): void {
   });
 }
 
+const SHAPE_CARD_BLOCKED = [
+  ["pixel", "Pixel"],
+  ["nPlusOne", "N+1"],
+  ["traitor", "Traitor"],
+  ["tetris", "Tetris"],
+  ["zen", "Zen"],
+  ["colorGo", "Color Go"],
+  ["hiddenMove", "Hidden"],
+  ["phantomMove", "Phantom"],
+] as const;
+
 export function invalidVariantComboMessage(data: FormData): string {
   if (data.has("josekiCard") && Number(data.get("boardSize")) !== 19) {
     return "Joseki Card requires a 19×19 board.";
@@ -236,6 +247,13 @@ export function invalidVariantComboMessage(data: FormData): string {
   if (data.has("zen") && data.has("colorGo")) return "Zen cannot be combined with Color Go.";
   if (data.has("teamGo") && data.has("zen")) {
     return "Team Go cannot be combined with Zen.";
+  }
+  if (data.has("shapeCards")) {
+    const blocked = SHAPE_CARD_BLOCKED.filter(([name]) => data.has(name)).map(([, label]) => label);
+    if (blocked.length) return `Katachi cannot be combined with ${blocked.join(", ")}.`;
+    if (data.get("ruleset") === "chinese" && Number(data.get("handicap") ?? 0) > 1) {
+      return "Katachi cannot be combined with free handicap placement.";
+    }
   }
   if (data.has("tetris") && data.has("pixel")) return "Tetris cannot be combined with Pixel.";
   if (data.has("tetris") && data.has("nPlusOne") && Number(data.get("nPlusOneCount")) === 4) {
@@ -296,6 +314,22 @@ function updateVariantConflicts(): void {
   nPlusOneCount.setCustomValidity(
     tetrisChecked && Number(nPlusOneCount.value) === 4 ? "Tetris cannot use N+1 count 4." : "",
   );
+  updateShapeCardConflicts();
+}
+
+function updateShapeCardConflicts(): void {
+  const shapeCards = document.querySelector<HTMLInputElement>("[name='shapeCards']");
+  if (!shapeCards) return;
+  const blocked = SHAPE_CARD_BLOCKED
+    .map(([name]) => document.querySelector<HTMLInputElement>(`[name='${name}']`))
+    .filter((input): input is HTMLInputElement => Boolean(input));
+  if (shapeCards.checked && document.activeElement === shapeCards) {
+    for (const input of blocked) input.checked = false;
+  }
+  const anyBlocked = blocked.some((input) => input.checked);
+  if (anyBlocked && shapeCards.checked) shapeCards.checked = false;
+  if (shapeCards.checked) { for (const input of blocked) setVariantDisabled(input, true); }
+  setVariantDisabled(shapeCards, anyBlocked);
 }
 
 function resolveExclusivePair(first: HTMLInputElement, second: HTMLInputElement): void {

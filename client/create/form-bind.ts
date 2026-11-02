@@ -16,6 +16,7 @@ import {
   toggleCircloidGoban,
 } from "./custom-goban.ts";
 import { openJosekiCardDialog } from "./joseki-card-dialog.ts";
+import { openShapeCardDialog } from "./shape-card-dialog.ts";
 
 export function bindCreateGameForm(
   submitHandler: (event: SubmitEvent) => void | Promise<void>,
@@ -64,6 +65,10 @@ export function bindCreateGameForm(
   root.querySelector("[name='circloidGobanMode']")?.addEventListener(
     "change",
     () => toggleCircloidGoban(root),
+  );
+  root.querySelector(".shape-card-open")?.addEventListener(
+    "click",
+    () => openShapeCardDialog(statusElement),
   );
   root.querySelector(".joseki-card-open")?.addEventListener(
     "click",

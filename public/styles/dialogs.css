@@ -42,10 +42,41 @@
   padding-left: 1.25rem;
 }
 
+/* Dialog layout: the box itself never scrolls, so the close button, title and info
+   stay visible; only the .dialog-scroll body scrolls. (Custom goban dialogs have
+   their own fixed layout.) */
+.ui-dialog:not(.custom-goban-dialog)[open] {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  max-block-size: calc(100dvh - 2rem);
+  overflow: hidden;
+  position: fixed;
+}
+
+.ui-dialog:not(.custom-goban-dialog) > :is(h2, h3):first-of-type {
+  margin-block-start: 0;
+  padding-inline-end: 2.5rem;
+}
+
+/* Content that starts right under the close button gets its own row for it. */
+.dialog-close + .dialog-scroll {
+  margin-block-start: 1.75rem;
+}
+
+.dialog-scroll {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: auto;
+}
+
 .dialog-close {
   background: transparent;
   color: var(--dialog-close-text);
-  float: right;
+  inset-block-start: 0.5rem;
+  inset-inline-end: 0.5rem;
   min-height: var(--icon-button-size);
   padding: 0.2rem 0.45rem;
+  position: absolute;
+  z-index: 1;
 }

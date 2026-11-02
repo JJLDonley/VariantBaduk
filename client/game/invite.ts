@@ -10,7 +10,7 @@ export function openJoinedRulesDialog(game: Game): void {
   dialog.innerHTML = `
     <button class="dialog-close" type="button" aria-label="Close">×</button>
     <h3>Variant rules</h3>
-    <div class="invite-rules">${rulesHtml}</div>
+    <div class="invite-rules dialog-scroll ui-scroll">${rulesHtml}</div>
   `;
   document.body.append(dialog);
   dialog.querySelector(".dialog-close")?.addEventListener("click", () => dialog.close());

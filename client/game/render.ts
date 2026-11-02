@@ -13,7 +13,8 @@ import { territoryShadeHtml } from "./territory.ts";
 import { variantRulesHelpHtml } from "./variants.ts";
 import { josekiPlacementOverlay } from "./joseki-placement.ts";
 import { josekiCardGridHtml } from "./joseki-card.ts";
-import type { Game, Session } from "../types/domain.ts";
+import { shapeHandPanelHtml } from "./shape-cards.ts";
+import type { Game, HistoryEntry, Session } from "../types/domain.ts";
 
 type GameViewContext = {
   game: Game;
@@ -30,6 +31,8 @@ type GameViewContext = {
   canUndo: boolean;
   canResign: boolean;
   showCoordinates: boolean;
+  /** The history entry being reviewed, when viewingHistory. */
+  historyEntry?: HistoryEntry;
 };
 
 export function gameViewHtml(context: GameViewContext): string {
@@ -48,10 +51,12 @@ export function gameViewHtml(context: GameViewContext): string {
     canUndo,
     canResign,
     showCoordinates,
+    historyEntry,
   } = context;
   const edge = boardEdge(showCoordinates, game.boardWidth, game.boardHeight);
   const overlay = josekiPlacementOverlay(game, boardColors, boardOpacity);
   const result = resultText(game);
+  const shapeCardInProgress = Boolean(game.shapeCards?.active);
   return `
     <div class="game-title-row">
       <h2>${escapeHtml(game.config.name || `Game #${game.id}`)}</h2>
@@ -61,11 +66,13 @@ export function gameViewHtml(context: GameViewContext): string {
     </div>
     <dialog class="ui-dialog game-info-dialog">
       <button class="dialog-close" type="button" aria-label="Close">×</button>
-      ${gameInfoHtml(game)}
-      ${variantRulesHelpHtml(game)}
-      ${scoringHelpHtml()}
+      <div class="dialog-scroll ui-scroll">
+        ${gameInfoHtml(game)}
+        ${variantRulesHelpHtml(game)}
+        ${scoringHelpHtml()}
+      </div>
     </dialog>
-    <div class="game-view">
+    <div class="game-view ${game.shapeCards ? "has-shape-hand" : ""}">
       <section class="board-panel" aria-label="Board">
         <div class="board ${result ? "has-result" : ""}" data-preview-team="${
     placementPreviewTeam(game)
@@ -81,6 +88,7 @@ export function gameViewHtml(context: GameViewContext): string {
   }
         </div>
       </section>
+      ${shapeHandPanelHtml(game, session, viewingHistory, historyEntry)}
       <section class="players-panel ui-stack" aria-label="Players and seats">
         <button class="players-toggle players-panel__toggle" type="button" aria-expanded="false">Players</button>
         <div class="history-actions players-panel__review" ${canNavigateHistory ? "" : "hidden"}>
@@ -111,9 +119,11 @@ export function gameViewHtml(context: GameViewContext): string {
       : ""
   }>
           <button data-action="${game.phase === "scoring" ? "acceptScore" : "pass"}" ${
-    passOrDoneDisabled ? "disabled" : ""
+    passOrDoneDisabled || shapeCardInProgress ? "disabled" : ""
   }>${game.phase === "scoring" ? "Done" : "Pass"}</button>
-          <button data-action="cancel" ${!canUndo ? "disabled" : ""}>Undo</button>
+          <button data-action="cancel" ${
+    !canUndo || shapeCardInProgress ? "disabled" : ""
+  }>Undo</button>
           <button data-action="resign" ${!canResign ? "disabled" : ""}>Resign</button>
         </div>
         <div class="players-panel__metadata">${gameInfoHtml(game)}</div>
@@ -180,14 +190,16 @@ function josekiSetupHtml(game: Game, session: Session | undefined): string {
       canSelect ? "" : "disabled"
     }>Choose cards</button>
       </div>
-      <dialog class="ui-dialog ui-scroll joseki-selection-dialog" data-joseki-selection-dialog>
+      <dialog class="ui-dialog joseki-selection-dialog" data-joseki-selection-dialog>
         <button class="dialog-close" data-joseki-selection-close type="button" aria-label="Close">×</button>
         <h3>${pickText}</h3>
         <p class="muted-text">Select exactly ${requiredCount} card${
       requiredCount === 1 ? "" : "s"
     }. Your selected cards are highlighted.</p>
         <p>${selected.size} / ${requiredCount} selected · ${seconds}s remaining</p>
-        ${josekiCardGridHtml(setup.availableCards, selected)}
+        <div class="dialog-scroll ui-scroll">
+          ${josekiCardGridHtml(setup.availableCards, selected)}
+        </div>
         <div class="actions joseki-selection-actions">
           <button data-joseki-selection-confirm type="button" ${
       selected.size === requiredCount ? "" : "disabled"

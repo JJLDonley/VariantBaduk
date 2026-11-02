@@ -1,0 +1,7 @@
+ID=empty-triangle
+NAME=Empty Triangle
+COUNT=1
+STONES=
+B[aa];
+B[ba];
+B[ab];

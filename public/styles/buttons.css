@@ -24,11 +24,13 @@ button:disabled {
   opacity: var(--control-disabled-opacity);
 }
 
-button[data-tooltip] {
+button[data-tooltip],
+label[data-tooltip] {
   position: relative;
 }
 
-button[data-tooltip]::after {
+button[data-tooltip]::after,
+label[data-tooltip]::after {
   background: var(--surface-bg);
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-sm);
@@ -51,7 +53,9 @@ button[data-tooltip]::after {
 }
 
 button[data-tooltip]:hover::after,
-button[data-tooltip]:focus-visible::after {
+button[data-tooltip]:focus-visible::after,
+label[data-tooltip]:hover::after,
+label[data-tooltip]:focus-within::after {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }

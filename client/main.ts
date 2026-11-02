@@ -38,6 +38,8 @@ import {
   type CountdownVoice,
 } from "./game/countdown.ts";
 import type { Game, GameAction, Session } from "./types/domain.ts";
+import { installDialogLightDismiss } from "./ui/dialog.ts";
+import { readKatachiControls, saveKatachiControls } from "./game/katachi-controls.ts";
 
 const statusElement = document.querySelector<HTMLElement>("#status")!;
 const nameForm = document.querySelector<HTMLFormElement>("#name-form");
@@ -90,6 +92,7 @@ applySavedTheme();
 updateThemeToggle(themeToggle);
 updateCoordinateToggle();
 updateStoneShadowToggle();
+installDialogLightDismiss();
 const landingHelpBody = document.querySelector<HTMLElement>("[data-landing-help-body]");
 if (landingHelpBody) landingHelpBody.innerHTML = allVariantRulesHelpHtml();
 
@@ -124,6 +127,7 @@ soundToggle?.addEventListener("click", (event) => {
   toggleSoundPopover();
 });
 soundControl?.addEventListener("click", (event) => event.stopPropagation());
+bindKatachiControlsPopover();
 stoneVolume?.addEventListener("input", () => {
   setStoneVolume(Number(stoneVolume.value));
   localStorage.setItem("baduk:stone-volume", stoneVolume.value);
@@ -292,7 +296,8 @@ function renderGame(game: Game) {
     "[data-joseki-selection-dialog]",
   );
   const josekiSelectionWasOpen = josekiSelectionDialog?.open ?? false;
-  const josekiSelectionScrollTop = josekiSelectionDialog?.scrollTop ?? 0;
+  const josekiSelectionScrollTop =
+    josekiSelectionDialog?.querySelector(".dialog-scroll")?.scrollTop ?? 0;
   maybePlayStoneSound(currentGame, game);
   if (game.phase !== "play") {
     stopCountdownAudio();
@@ -311,6 +316,7 @@ function renderGame(game: Game) {
   shell.classList.add("game-layout");
   updateGameLayoutMode(shell);
   const {
+    rawHistory,
     latestHistoryIndex,
     historyIndex,
     viewingHistory,
@@ -331,6 +337,7 @@ function renderGame(game: Game) {
   panel.innerHTML = gameViewHtml({
     game: displayGame,
     session,
+    historyEntry: viewingHistory ? rawHistory[historyIndex] : undefined,
     boardColors,
     boardOpacity,
     canNavigateHistory,
@@ -374,7 +381,8 @@ function renderGame(game: Game) {
   );
   if (josekiSelectionWasOpen && nextJosekiSelectionDialog) {
     if (!nextJosekiSelectionDialog.open) nextJosekiSelectionDialog.showModal();
-    nextJosekiSelectionDialog.scrollTop = josekiSelectionScrollTop;
+    const scroller = nextJosekiSelectionDialog.querySelector(".dialog-scroll");
+    if (scroller) scroller.scrollTop = josekiSelectionScrollTop;
   }
   if (
     game.phase === "play" && game.clockUpdatedAt !== undefined && game.config.time?.system &&
@@ -440,6 +448,51 @@ function readCountdownSoundSelection(): CountdownSound {
 
 function parseCountdownSound(value: string | null | undefined): CountdownSound {
   return value === "chinese" || value === "beep" || value === "off" ? value : "english";
+}
+
+/** The Katachi controls popover: same pattern and styles as the sound popover. */
+function bindKatachiControlsPopover(): void {
+  const control = document.querySelector<HTMLElement>("#katachi-controls");
+  const toggle = document.querySelector<HTMLButtonElement>("#katachi-controls-toggle");
+  const popover = document.querySelector<HTMLElement>("#katachi-controls-popover");
+  const placeButton = document.querySelector<HTMLSelectElement>("#katachi-place-button");
+  const rotateKey = document.querySelector<HTMLInputElement>("#katachi-rotate-key");
+  const mirrorKey = document.querySelector<HTMLInputElement>("#katachi-mirror-key");
+  if (!control || !toggle || !popover || !placeButton || !rotateKey || !mirrorKey) return;
+  const fill = () => {
+    const controls = readKatachiControls();
+    placeButton.value = controls.placeButton;
+    rotateKey.value = controls.rotateKey.toUpperCase();
+    mirrorKey.value = controls.mirrorKey.toUpperCase();
+  };
+  const save = () => {
+    const current = readKatachiControls();
+    const key = (input: HTMLInputElement, fallback: string) =>
+      input.value.trim().toLowerCase() || fallback;
+    saveKatachiControls({
+      placeButton: placeButton.value === "right" ? "right" : "left",
+      rotateKey: key(rotateKey, current.rotateKey),
+      mirrorKey: key(mirrorKey, current.mirrorKey),
+    });
+    fill();
+  };
+  fill();
+  toggle.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const open = popover.hidden;
+    popover.hidden = !open;
+    toggle.setAttribute("aria-expanded", String(open));
+  });
+  control.addEventListener("click", (event) => event.stopPropagation());
+  document.addEventListener("click", () => {
+    popover.hidden = true;
+    toggle.setAttribute("aria-expanded", "false");
+  });
+  placeButton.addEventListener("change", save);
+  for (const input of [rotateKey, mirrorKey]) {
+    input.addEventListener("input", save);
+    input.addEventListener("focus", () => input.select());
+  }
 }
 
 function toggleSoundPopover(): void {

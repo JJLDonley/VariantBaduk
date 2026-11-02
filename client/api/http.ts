@@ -48,6 +48,10 @@ export async function readGameList(response: Response): Promise<GameListResponse
   return await jsonResponse<GameListResponse>(response);
 }
 
+export async function listShapeCards(): Promise<Response> {
+  return await fetch("/api/shape-cards");
+}
+
 export async function listJosekiCards(): Promise<Response> {
   return await fetch("/api/joseki-cards");
 }

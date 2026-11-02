@@ -1,3 +1,4 @@
+import { shapePreviewTeam } from "./shape-card-state.ts";
 import {
   escapeHtml,
   formatByoyomiTime,
@@ -27,6 +28,7 @@ export function resultText(game: Game): string {
   const prefix = colorResultPrefix(stoneColor(game, winnerTeam));
   if (game.endReason === "resign") return `${prefix}+R`;
   if (game.endReason === "timeout") return `${prefix}+T`;
+  if (game.endReason === "unknown") return `${prefix}+`;
 
   const lastAction = game.history?.at(-1)?.action;
   const wonByResignation = lastAction === "resign" ||
@@ -107,6 +109,8 @@ export function teamColorName(game: Game, team: number): string {
 }
 
 export function placementPreviewTeam(game: Game): number {
+  const shapeTeam = shapePreviewTeam(game);
+  if (shapeTeam !== undefined) return shapeTeam;
   const activeTeam = game.seats[game.turn]?.team ?? 1;
   return game.config.variants?.zen ? ((game.playMoves ?? 0) % 2) + 1 : activeTeam;
 }

@@ -97,6 +97,14 @@
   min-width: 9rem;
 }
 
+/* One-letter key boxes (Katachi controls): same compact size as the small selects. */
+.sound-popover input.key-input {
+  inline-size: 2.4rem;
+  min-height: 30px;
+  padding-block: 0.1rem;
+  text-align: center;
+}
+
 h1,
 h2,
 h3,
