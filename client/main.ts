@@ -1,16 +1,33 @@
 import {
   createGame,
   getGame,
+  getGameHistory,
   loadBootData,
   readGame,
+  readGameHistory,
   readSession,
   updateSessionName,
 } from "./api/http.ts";
+import {
+  addHistoryBoards,
+  type HistoryBoards,
+  historyFetchStart,
+  reconcileHistoryBoards,
+  withHistoryBoards,
+} from "./game/history-cache.ts";
 import { remakeConfig, sendGameAction } from "./game/actions.ts";
 import { gameConfigFromFormData } from "./create/config.ts";
 import { bindCreateGameForm as bindCreateGameFormControls } from "./create/form-bind.ts";
 import { invalidVariantComboMessage } from "./create/form.ts";
-import { seatMetaHtml, winnerText } from "./game/display.ts";
+import { removeTryPlaying, showTryPlaying } from "./create/try-playing.ts";
+import {
+  lastMoveDotColor,
+  seatMetaHtml,
+  stoneColor,
+  stoneTone,
+  winnerText,
+} from "./game/display.ts";
+import { isPendingSettled, optimisticPlacement, type PendingMove } from "./game/optimistic.ts";
 import { bindGameEvents } from "./game/events.ts";
 import { gameViewHtml } from "./game/render.ts";
 import {
@@ -30,13 +47,21 @@ import {
 } from "./game/realtime.ts";
 import { applySavedTheme, toggleTheme, updateThemeToggle } from "./ui/theme.ts";
 import { allVariantRulesHelpHtml } from "./game/variants.ts";
+import { keepGridLinesCrisp } from "./game/board-render.ts";
+import { animateMagnetSlides, magnetSlides, reviewMagnetSlides } from "./game/magnet-animation.ts";
+import {
+  applyLastMoveMarker,
+  parseLastMoveMarker,
+  readLastMoveMarker,
+  saveLastMoveMarker,
+} from "./game/last-move-marker.ts";
 import {
   activeClockExpired,
   countdownAudioPath,
   countdownCue,
   type CountdownSound,
-  type CountdownVoice,
 } from "./game/countdown.ts";
+import { clampVolume, type MoveSound, moveSoundFor, SoundPlayer } from "./game/sound.ts";
 import type { Game, GameAction, Session } from "./types/domain.ts";
 import { installDialogLightDismiss } from "./ui/dialog.ts";
 import { readKatachiControls, saveKatachiControls } from "./game/katachi-controls.ts";
@@ -58,17 +83,21 @@ const voiceVolume = document.querySelector<HTMLInputElement>("#voice-volume");
 const countdownSound = document.querySelector<HTMLSelectElement>("#countdown-sound");
 const appRemake = document.querySelector<HTMLElement>("#app-remake");
 const appHelp = document.querySelector<HTMLElement>("#app-help");
-const stoneSound = createSound("/clack.mp3", readSavedStoneVolume());
-const captureSound = createSound("/capture.mp3", readSavedStoneVolume());
-const passSound = createSound("/pass.mp3", readSavedStoneVolume());
-const voiceCountdownSounds = {
-  english: createCountdownVoiceSounds("english"),
-  chinese: createCountdownVoiceSounds("chinese"),
+const MOVE_SOUNDS: Record<MoveSound, string> = {
+  stone: "/clack.mp3",
+  capture: "/capture.mp3",
+  pass: "/pass.mp3",
 };
-const countdownBeep = createSound("/CountdownBeep.mp3", readSavedVoiceVolume());
-if (stoneVolume) stoneVolume.value = String(stoneSound.volume);
-if (voiceVolume) voiceVolume.value = String(countdownBeep.volume);
+const COUNTDOWN_BEEP = "/CountdownBeep.mp3";
+const sounds = new SoundPlayer();
+sounds.setVolume("stone", readSavedStoneVolume());
+sounds.setVolume("voice", readSavedVoiceVolume());
+sounds.unlockOn(document);
+sounds.preload([...Object.values(MOVE_SOUNDS), COUNTDOWN_BEEP]);
+if (stoneVolume) stoneVolume.value = String(sounds.volume("stone"));
+if (voiceVolume) voiceVolume.value = String(sounds.volume("voice"));
 if (countdownSound) countdownSound.value = readSavedCountdownSound();
+preloadCountdownVoice(readSavedCountdownSound());
 const createGamePanelHtml = panel.innerHTML;
 
 let session: Session | undefined;
@@ -87,14 +116,29 @@ if (!showCoordinates && matchMedia("(max-width: 759px)").matches) {
   localStorage.setItem("baduk:show-coordinates", "false");
 }
 const historyViewByGame = new Map<Game["id"], number>();
+let historyBoards: HistoryBoards | undefined;
+let historyBoardsLoading = false;
+/** Own stone shown before the server confirms it (plain games only). */
+let pendingMove: PendingMove | undefined;
+/** Position last put on screen, so history navigation can replay a Magnetic move's slides. */
+let shownPosition: { gameId: Game["id"]; historyIndex: number; reviewing: boolean } | undefined;
+let pendingMoveTimer: ReturnType<typeof setTimeout> | undefined;
+const PENDING_MOVE_TIMEOUT_MS = 3000;
 
 applySavedTheme();
+keepGridLinesCrisp();
 updateThemeToggle(themeToggle);
 updateCoordinateToggle();
 updateStoneShadowToggle();
 installDialogLightDismiss();
 const landingHelpBody = document.querySelector<HTMLElement>("[data-landing-help-body]");
 if (landingHelpBody) landingHelpBody.innerHTML = allVariantRulesHelpHtml();
+// An entry opened at the bottom of the list would otherwise expand out of sight. "toggle" doesn't
+// bubble, hence the capture.
+landingHelpBody?.addEventListener("toggle", (event) => {
+  const entry = event.target as HTMLDetailsElement;
+  if (entry.open) entry.scrollIntoView({ block: "nearest" });
+}, true);
 
 appRemake?.addEventListener("click", remakeCurrentGame);
 appHelp?.addEventListener("click", () => {
@@ -128,16 +172,18 @@ soundToggle?.addEventListener("click", (event) => {
 });
 soundControl?.addEventListener("click", (event) => event.stopPropagation());
 bindKatachiControlsPopover();
+bindLastMoveMarkerPopover();
 stoneVolume?.addEventListener("input", () => {
-  setStoneVolume(Number(stoneVolume.value));
+  sounds.setVolume("stone", Number(stoneVolume.value));
   localStorage.setItem("baduk:stone-volume", stoneVolume.value);
 });
 voiceVolume?.addEventListener("input", () => {
-  setVoiceVolume(Number(voiceVolume.value));
+  sounds.setVolume("voice", Number(voiceVolume.value));
   localStorage.setItem("baduk:voice-volume", voiceVolume.value);
 });
 countdownSound?.addEventListener("change", () => {
   localStorage.setItem("baduk:countdown-sound", readCountdownSoundSelection());
+  preloadCountdownVoice(readCountdownSoundSelection());
   lastCountdownCueKey = undefined;
   stopCountdownAudio();
   if (currentGame) maybePlayCountdown(currentGame);
@@ -156,6 +202,7 @@ async function boot() {
     startGameListRefresh();
     const gameId = location.pathname.match(/^\/game\/([^/]+)/)?.[1];
     if (gameId) await showGame(gameId);
+    else showTryPlaying();
   } catch (_error) {
     statusElement.textContent = "Server unavailable. Try refreshing.";
   }
@@ -209,7 +256,6 @@ async function saveNameNow(): Promise<void> {
   session = await readSession(response);
   nameInput.value = session.name ?? "";
   lastSavedName = nameInput.value;
-  await renderGameList();
   const gameId = location.pathname.match(/^\/game\/([^/]+)/)?.[1];
   if (gameId) await showGame(gameId);
 }
@@ -265,6 +311,7 @@ function showCreateScreen(push = true) {
   shell.classList.remove("game-layout", "desktop-fit");
   panel.innerHTML = createGameTemplate();
   bindCreateGameForm();
+  showTryPlaying();
   if (push && location.pathname !== "/") history.pushState(null, "", "/");
 }
 
@@ -284,21 +331,27 @@ async function showGame(gameId: string | number | undefined) {
     return;
   }
   const game = await readGame(response);
+  removeTryPlaying();
   connectGameSocket(game.id);
   renderGame(game);
   await maybeJoinHashSeat(game, renderGame, showGame);
 }
 
 function renderGame(game: Game) {
-  game = applyLocalName(game);
-  const helpWasOpen = document.querySelector<HTMLDialogElement>(".game-info-dialog")?.open ?? false;
+  const previousGame = currentGame;
+  historyBoards = reconcileHistoryBoards(historyBoards, game);
+  game = withHistoryBoards(applyLocalName(game), historyBoards);
+  const helpDialog = document.querySelector<HTMLDialogElement>(".game-info-dialog");
+  const helpWasOpen = helpDialog?.open ?? false;
+  const helpScrollTop = helpDialog?.querySelector(".dialog-scroll")?.scrollTop ?? 0;
   const josekiSelectionDialog = document.querySelector<HTMLDialogElement>(
     "[data-joseki-selection-dialog]",
   );
   const josekiSelectionWasOpen = josekiSelectionDialog?.open ?? false;
   const josekiSelectionScrollTop =
     josekiSelectionDialog?.querySelector(".dialog-scroll")?.scrollTop ?? 0;
-  maybePlayStoneSound(currentGame, game);
+  const confirmedPendingMove = settlePendingMove(game);
+  maybePlayStoneSound(currentGame, game, confirmedPendingMove);
   if (game.phase !== "play") {
     stopCountdownAudio();
     lastCountdownCueKey = undefined;
@@ -331,6 +384,9 @@ function renderGame(game: Game) {
     canResign,
     passOrDoneDisabled,
   } = gameHistoryView(game, session, historyViewByGame);
+  if (viewingHistory && !rawHistory[historyIndex]?.board) {
+    void loadHistoryBoards(game, historyIndex);
+  }
   const displayGame = viewingHistory
     ? { ...game, phase: "play", deadStones: [], noScorePoints: [] }
     : game;
@@ -363,7 +419,6 @@ function renderGame(game: Game) {
     historyKeyController,
     statusElement,
     sendAction,
-    renderGameList,
     showGame,
     navigateGameHistory,
     canNavigateGameHistory,
@@ -371,11 +426,22 @@ function renderGame(game: Game) {
     toggleCoordinates,
   });
 
+  showPendingStone();
+  animateMagnetSlides(
+    panel,
+    positionMagnetSlides(previousGame, game, historyIndex, viewingHistory),
+  );
+
   const activeSeat = game.seats[game.turn];
   statusElement.textContent = game.phase === "done" && game.winnerTeams?.length
     ? `done · winner: ${winnerText(game)}`
     : `${game.phase} · turn: ${activeSeat?.id ?? "none"}`;
-  if (helpWasOpen) panel.querySelector<HTMLDialogElement>(".game-info-dialog")?.showModal();
+  if (helpWasOpen) {
+    const nextHelpDialog = panel.querySelector<HTMLDialogElement>(".game-info-dialog");
+    nextHelpDialog?.showModal();
+    const scroller = nextHelpDialog?.querySelector(".dialog-scroll");
+    if (scroller) scroller.scrollTop = helpScrollTop;
+  }
   const nextJosekiSelectionDialog = panel.querySelector<HTMLDialogElement>(
     "[data-joseki-selection-dialog]",
   );
@@ -392,37 +458,6 @@ function renderGame(game: Game) {
   }
 }
 
-function createSound(src: string, volume: number): HTMLAudioElement {
-  const sound = new Audio(src);
-  sound.preload = "auto";
-  sound.volume = volume;
-  return sound;
-}
-
-function createCountdownVoiceSounds(voice: CountdownVoice): HTMLAudioElement[] {
-  return Array.from({ length: 10 }, (_, index) => {
-    const src = countdownAudioPath(voice, index + 1);
-    if (!src) throw new Error(`Missing ${voice} countdown audio path`);
-    return createSound(src, readSavedVoiceVolume());
-  });
-}
-
-function setStoneVolume(volume: number): void {
-  const safeVolume = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.5;
-  for (const sound of [stoneSound, captureSound, passSound]) sound.volume = safeVolume;
-}
-
-function setVoiceVolume(volume: number): void {
-  const safeVolume = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.5;
-  for (
-    const sound of [
-      ...voiceCountdownSounds.english,
-      ...voiceCountdownSounds.chinese,
-      countdownBeep,
-    ]
-  ) sound.volume = safeVolume;
-}
-
 function readSavedStoneVolume(): number {
   return readSavedVolume("baduk:stone-volume");
 }
@@ -432,10 +467,9 @@ function readSavedVoiceVolume(): number {
 }
 
 function readSavedVolume(key: string): number {
-  const saved = Number(
-    localStorage.getItem(key) ?? localStorage.getItem("baduk:sound-volume") ?? "0.5",
+  return clampVolume(
+    Number(localStorage.getItem(key) ?? localStorage.getItem("baduk:sound-volume") ?? "0.5"),
   );
-  return Number.isFinite(saved) ? Math.min(1, Math.max(0, saved)) : 0.5;
 }
 
 function readSavedCountdownSound(): CountdownSound {
@@ -495,6 +529,33 @@ function bindKatachiControlsPopover(): void {
   }
 }
 
+/** The last-move marker picker: same pattern and styles as the sound popover. */
+function bindLastMoveMarkerPopover(): void {
+  applyLastMoveMarker(readLastMoveMarker());
+  const control = document.querySelector<HTMLElement>("#marker-control");
+  const toggle = document.querySelector<HTMLButtonElement>("#marker-toggle");
+  const popover = document.querySelector<HTMLElement>("#marker-popover");
+  const select = document.querySelector<HTMLSelectElement>("#last-move-marker");
+  if (!control || !toggle || !popover || !select) return;
+  select.value = readLastMoveMarker();
+  toggle.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const open = popover.hidden;
+    popover.hidden = !open;
+    toggle.setAttribute("aria-expanded", String(open));
+  });
+  control.addEventListener("click", (event) => event.stopPropagation());
+  document.addEventListener("click", () => {
+    popover.hidden = true;
+    toggle.setAttribute("aria-expanded", "false");
+  });
+  select.addEventListener("change", () => {
+    const marker = parseLastMoveMarker(select.value);
+    saveLastMoveMarker(marker);
+    applyLastMoveMarker(marker);
+  });
+}
+
 function toggleSoundPopover(): void {
   if (!soundPopover || !soundToggle) return;
   const open = soundPopover.hidden;
@@ -508,20 +569,11 @@ function closeSoundPopover(): void {
   soundToggle.setAttribute("aria-expanded", "false");
 }
 
-function maybePlayStoneSound(previous: Game | undefined, next: Game): void {
-  if (!previous || previous.id !== next.id) return;
-  const nextAction = next.history?.at(-1)?.action;
-  const previousHistoryLength = previous.history?.length ?? 0;
-  const nextHistoryLength = next.history?.length ?? 0;
-  if (nextHistoryLength > previousHistoryLength && nextAction === "pass") {
-    playSound(passSound);
-    return;
-  }
-  if ((next.captureCount ?? 0) > (previous.captureCount ?? 0)) {
-    playSound(captureSound);
-    return;
-  }
-  if ((next.playMoves ?? 0) > (previous.playMoves ?? 0)) playSound(stoneSound);
+function maybePlayStoneSound(previous: Game | undefined, next: Game, alreadyPlayed = false): void {
+  const sound = moveSoundFor(previous, next);
+  // The click already sounded when the pending stone appeared; a capture still plays.
+  if (sound === "stone" && alreadyPlayed) return;
+  if (sound) sounds.play(MOVE_SOUNDS[sound], "stone");
 }
 
 function maybePlayCountdown(game: Game): void {
@@ -531,31 +583,24 @@ function maybePlayCountdown(game: Game): void {
   if (!cue || cue.key === lastCountdownCueKey) return;
   lastCountdownCueKey = cue.key;
 
-  if (selectedSound === "beep" || cue.seconds === 0) {
-    playCountdownSound(countdownBeep);
-    return;
-  }
-
-  const audio = voiceCountdownSounds[selectedSound][cue.seconds - 1];
-  if (!audio) return;
-  playCountdownSound(audio);
-}
-
-function playCountdownSound(audio: HTMLAudioElement): void {
+  const src = selectedSound === "beep" || cue.seconds === 0
+    ? COUNTDOWN_BEEP
+    : countdownAudioPath(selectedSound, cue.seconds);
+  if (!src) return;
   stopCountdownAudio();
-  playSound(audio);
+  sounds.play(src, "voice");
 }
 
 function stopCountdownAudio(): void {
-  const countdownSounds = [
-    ...voiceCountdownSounds.english,
-    ...voiceCountdownSounds.chinese,
-    countdownBeep,
-  ];
-  for (const audio of countdownSounds) {
-    audio.pause();
-    audio.currentTime = 0;
-  }
+  sounds.stop("voice");
+}
+
+function preloadCountdownVoice(selected: CountdownSound): void {
+  if (selected !== "english" && selected !== "chinese") return;
+  sounds.preload(
+    Array.from({ length: 10 }, (_, index) => countdownAudioPath(selected, index + 1))
+      .filter((src): src is string => Boolean(src)),
+  );
 }
 
 function updateGameClock(game: Game): void {
@@ -589,13 +634,60 @@ function updateGameClock(game: Game): void {
   }
 }
 
-function playSound(sound: HTMLAudioElement): void {
-  sound.currentTime = 0;
-  void sound.play().catch(() => {});
+/**
+ * Slides to play for what is now on screen: a newly arrived live move, or the move of a position
+ * that history navigation just landed on (including stepping forward into the live position).
+ */
+function positionMagnetSlides(
+  previous: Game | undefined,
+  game: Game,
+  historyIndex: number,
+  reviewing: boolean,
+) {
+  const entry = game.history?.[historyIndex];
+  // A past position whose board is still loading isn't on screen yet; count it once it is.
+  if (reviewing && !entry?.board) return [];
+  const last = shownPosition;
+  shownPosition = { gameId: game.id, historyIndex, reviewing };
+  const navigated = last !== undefined && String(last.gameId) === String(game.id) &&
+    last.historyIndex !== historyIndex && (last.reviewing || reviewing);
+  if (reviewing) return navigated ? reviewMagnetSlides(game, entry) : [];
+  if (navigated) {
+    // Stepped forward into the live position: replay the latest move's slides.
+    return reviewMagnetSlides(game, {
+      board: game.board,
+      lastStone: game.lastStone,
+      magnetMoves: game.magnetMoves,
+    });
+  }
+  return magnetSlides(previous, game, false);
+}
+
+/** Fetches the past positions needed to show `index`, then re-renders if still relevant. */
+async function loadHistoryBoards(game: Game, index: number): Promise<void> {
+  const from = historyFetchStart(historyBoards, game, index);
+  if (from === undefined || historyBoardsLoading) return;
+  historyBoardsLoading = true;
+  try {
+    const response = await getGameHistory(game.id, from);
+    if (!response.ok) return;
+    const { from: start, entries } = await readGameHistory(response);
+    if (!currentGame || String(currentGame.id) !== String(game.id)) return;
+    historyBoards = addHistoryBoards(historyBoards, currentGame, start, entries);
+    renderGame(currentGame);
+  } finally {
+    historyBoardsLoading = false;
+  }
 }
 
 function connectGameSocket(gameId: string | number) {
-  connectGameSocketToServer(gameId, socketState, renderGame, renderGameList, connectGameSocket);
+  connectGameSocketToServer(
+    gameId,
+    socketState,
+    renderGame,
+    connectGameSocket,
+    cancelPendingMove,
+  );
 }
 
 async function remakeCurrentGame() {
@@ -637,7 +729,66 @@ function updateStoneShadowToggle(): void {
 }
 
 async function sendAction(gameId: string | number, action: GameAction) {
-  await sendGameAction(gameId, action, statusElement, renderGame, renderGameList, socketState);
+  const pending = currentGame && String(currentGame.id) === String(gameId)
+    ? optimisticPlacement(currentGame, session, action, pendingMove)
+    : undefined;
+  if (pending) startPendingMove(pending);
+  const accepted = await sendGameAction(gameId, action, statusElement, renderGame, socketState);
+  if (!accepted) cancelPendingMove();
+}
+
+function startPendingMove(pending: PendingMove): void {
+  pendingMove = pending;
+  showPendingStone();
+  sounds.play(MOVE_SOUNDS.stone, "stone");
+  clearTimeout(pendingMoveTimer);
+  pendingMoveTimer = setTimeout(() => {
+    if (pendingMove !== pending) return;
+    cancelPendingMove("Move not confirmed by the server.");
+  }, PENDING_MOVE_TIMEOUT_MS);
+}
+
+/** Clears the preview once the server's state covers it; true if the move was played. */
+function settlePendingMove(game: Game): boolean {
+  if (!pendingMove || !isPendingSettled(pendingMove, game)) return false;
+  const confirmed = String(pendingMove.gameId) === String(game.id) &&
+    (game.playMoves ?? 0) > pendingMove.playMoves;
+  pendingMove = undefined;
+  clearTimeout(pendingMoveTimer);
+  return confirmed;
+}
+
+/**
+ * Removes the preview after a rejection or timeout. The re-render rewrites the status line, so
+ * the reason (e.g. "suicide") is put back afterwards.
+ */
+function cancelPendingMove(reason = statusElement.textContent ?? ""): void {
+  if (!pendingMove) return;
+  pendingMove = undefined;
+  clearTimeout(pendingMoveTimer);
+  if (currentGame) renderGame(currentGame);
+  if (reason) statusElement.textContent = reason;
+}
+
+/** Draws the pending stone; re-applied after renders that don't settle it yet. */
+function showPendingStone(): void {
+  if (!pendingMove || !currentGame || String(currentGame.id) !== String(pendingMove.gameId)) {
+    return;
+  }
+  const point = panel.querySelector<HTMLElement>(`.point[data-index="${pendingMove.index}"]`);
+  if (!point || point.dataset.color !== "0") return;
+  const color = stoneColor(currentGame, pendingMove.team);
+  point.dataset.color = String(pendingMove.team);
+  point.style.setProperty("--stone-color", color);
+  point.style.setProperty("--stone-opacity", "0.6");
+  point.classList.add("is-pending");
+  point.classList.toggle("is-light-stone", stoneTone(color) === "light");
+  // It is the last move now: move the marker over from the previous one.
+  for (const marked of panel.querySelectorAll(".point.is-last-move")) {
+    marked.classList.remove("is-last-move");
+  }
+  point.classList.add("is-last-move");
+  point.style.setProperty("--last-move-dot", lastMoveDotColor(color));
 }
 
 function navigateGameHistory(

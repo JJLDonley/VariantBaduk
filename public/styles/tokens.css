@@ -53,6 +53,9 @@
   --panel-text: var(--surface-text);
   --panel-border: var(--surface-border);
   --dialog-bg: var(--surface-bg);
+  /* Water on custom boards: a soft blue faded into the page background, so the wooden land pops
+     (light theme: pale blue; dark theme: deep muted blue). */
+  --board-water: color-mix(in srgb, #3f86c4 30%, var(--surface-bg));
   --dialog-text: var(--surface-text);
   --dialog-border: var(--surface-border);
   --control-bg: var(--surface-bg);

@@ -10,10 +10,10 @@ import {
   updateVariantOptions,
 } from "./form.ts";
 import {
+  applyGobanPreset,
   openCustomGobanEditor,
-  refreshCustomGobanPresetButtons,
+  refreshCustomGobanPreset,
   restoreCustomGobanAutosave,
-  toggleCircloidGoban,
 } from "./custom-goban.ts";
 import { openJosekiCardDialog } from "./joseki-card-dialog.ts";
 import { openShapeCardDialog } from "./shape-card-dialog.ts";
@@ -24,7 +24,7 @@ export function bindCreateGameForm(
   root: ParentNode = document,
 ): void {
   restoreCustomGobanAutosave(root);
-  refreshCustomGobanPresetButtons(root);
+  refreshCustomGobanPreset(root);
   root.querySelector<HTMLFormElement>("#create-game-form")?.addEventListener(
     "submit",
     submitHandler as EventListener,
@@ -35,7 +35,7 @@ export function bindCreateGameForm(
   for (const button of root.querySelectorAll("[data-board-size-option]")) {
     button.addEventListener("click", (event) => {
       selectBoardSizeOption(event);
-      refreshCustomGobanPresetButtons(root);
+      refreshCustomGobanPreset(root);
     });
   }
   root.querySelector("[name='colorGoPlayerCount']")?.addEventListener("change", () => {
@@ -62,9 +62,9 @@ export function bindCreateGameForm(
     "click",
     () => openCustomGobanEditor(statusElement),
   );
-  root.querySelector("[name='circloidGobanMode']")?.addEventListener(
+  root.querySelector("[name='gobanPreset']")?.addEventListener(
     "change",
-    () => toggleCircloidGoban(root),
+    () => applyGobanPreset(root),
   );
   root.querySelector(".shape-card-open")?.addEventListener(
     "click",
@@ -78,7 +78,7 @@ export function bindCreateGameForm(
   for (const input of root.querySelectorAll(".variant-button input")) {
     input.addEventListener("change", updateVariantOptions);
     input.addEventListener("change", updateCreatorSeatOptions);
-    input.addEventListener("change", () => refreshCustomGobanPresetButtons(root));
+    input.addEventListener("change", () => refreshCustomGobanPreset(root));
   }
   refreshCreateGameForm();
 }
@@ -90,5 +90,5 @@ export function refreshCreateGameForm(): void {
   updateTeamColorNames();
   updateVariantOptions();
   updateCreatorSeatOptions();
-  refreshCustomGobanPresetButtons();
+  refreshCustomGobanPreset();
 }

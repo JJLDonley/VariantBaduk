@@ -1,10 +1,12 @@
+/* --board-aspect (width / height, set by the board frame) keeps lines equally spaced on
+   non-square boards; height-based size limits are multiplied by it below and in responsive.css. */
 .board {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: var(--board-aspect, 1);
   background: var(--board-bg);
   border: 0;
   border-radius: 0.15rem;
   box-shadow: 0 1px 4px var(--board-shadow);
-  inline-size: min(100%, 100dvw, 100dvh);
+  inline-size: min(100%, 100dvw, calc(100dvh * var(--board-aspect, 1)));
   block-size: auto;
   margin-bottom: 0;
   max-block-size: 100%;
@@ -14,30 +16,41 @@
   touch-action: none;
 }
 
-.board-line,
+.board-grid,
 .coord,
 .star-point {
   pointer-events: none;
   position: absolute;
 }
 
-.board-line {
-  background: var(--board-line);
+/* Boards with water: the sea is the background and the land is drawn on top (boardLandHtml). */
+.board.has-water {
+  background: var(--board-water);
+}
+
+.board-land {
+  block-size: 100%;
+  fill: var(--board-bg);
+  inline-size: 100%;
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
   z-index: 0;
 }
 
-.board-line-v {
-  block-size: 86%;
-  inline-size: 1px;
-  top: 7%;
-  transform: translateX(-0.5px);
+/* The grid lines: one SVG path over the whole board (see boardGridSvg). */
+.board-grid {
+  block-size: 100%;
+  inline-size: 100%;
+  inset: 0;
+  overflow: visible;
+  stroke: var(--board-line);
+  z-index: 0;
 }
 
-.board-line-h {
-  block-size: 1px;
-  inline-size: 86%;
-  left: 7%;
-  transform: translateY(-0.5px);
+.board-grid path {
+  /* A whole number of device pixels, set by keepGridLinesCrisp(). */
+  stroke-width: var(--grid-stroke, 1px);
 }
 
 .coord {
@@ -69,9 +82,12 @@
   transform: translateY(-50%);
 }
 
+/* Sized from the width only (aspect-ratio 1): a % block-size is relative to the board's height,
+   which made dots oval on non-square boards. */
 .star-point {
+  aspect-ratio: 1 / 1;
   background: var(--board-line);
-  block-size: clamp(0.25rem, 1.2%, 0.45rem);
+  block-size: auto;
   border-radius: 999px;
   inline-size: clamp(0.25rem, 1.2%, 0.45rem);
   transform: translate(-50%, -50%);
@@ -154,6 +170,10 @@
 
 .point[data-color="2"]::after {
   background: var(--stone-color, var(--stone-white));
+}
+
+/* Outline light stones by their actual color, not their seat (Color Go lets any seat be white). */
+.point.is-light-stone::after {
   box-shadow: inset 0 0 0 1px var(--stone-white-border);
 }
 
@@ -172,6 +192,54 @@
   box-shadow: inset 0 0 0 1px var(--surface-border);
 }
 
+/* Last move marker, in a color that stands out on the stone (--last-move-dot). The style is
+   picked per browser via data-last-move-marker on <html>; these rules come after the color rules
+   so the marker layers on top of the stone's background color. */
+
+/* Slice (default): 1/5 of a pie (72°) centered on the bottom left (225°), reaching 85% of the
+   way to the edge. The top layer repaints the outer 15% in the stone's own color. */
+.point.is-last-move::after {
+  background-image:
+    radial-gradient(circle closest-side, transparent 0 85%, var(--stone-color) 85%),
+    conic-gradient(from 189deg, var(--last-move-dot) 0 72deg, transparent 72deg);
+}
+
+:root[data-last-move-marker="circle"] .point.is-last-move::after {
+  background-image: radial-gradient(
+    circle,
+    var(--last-move-dot) 0 20%,
+    transparent 22%
+  );
+}
+
+:root[data-last-move-marker="ring"] .point.is-last-move::after {
+  background-image: radial-gradient(
+    circle,
+    transparent 0 22%,
+    var(--last-move-dot) 24% 33%,
+    transparent 35%
+  );
+}
+
+:root[data-last-move-marker="square"] .point.is-last-move::after {
+  background-image: linear-gradient(var(--last-move-dot), var(--last-move-dot));
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 32% 32%;
+}
+
+/* Triangle: apex at the top of a 40% x 35% box, 60° wide, so roughly equilateral. */
+:root[data-last-move-marker="triangle"] .point.is-last-move::after {
+  background-image: conic-gradient(
+    from 150deg at 50% 0,
+    var(--last-move-dot) 0 60deg,
+    transparent 60deg
+  );
+  background-position: 50% 45%;
+  background-repeat: no-repeat;
+  background-size: 40% 35%;
+}
+
 :root:not([data-stone-shadows="off"]) .point:not([data-color="0"])::after {
   filter: drop-shadow(1.5px 2px 1.5px var(--stone-shadow));
 }
@@ -180,7 +248,8 @@
   background: color-mix(in srgb, var(--preview-color, var(--stone-neutral)) 55%, transparent);
 }
 
-.board.has-result .board-line,
+.board.has-result .board-grid,
+.board.has-result .board-land,
 .board.has-result .coord,
 .board.has-result .star-point,
 .board.has-result .territory-shade,
@@ -204,7 +273,7 @@
   z-index: 5;
 }
 
-.board[data-preview-team="2"] .point.is-preview[data-color="0"]::after {
+.board[data-preview-tone="light"] .point.is-preview[data-color="0"]::after {
   box-shadow: inset 0 0 0 1px var(--preview-outline);
 }
 
@@ -356,12 +425,19 @@
 
 .color-dot[data-team="1"] {
   background: var(--stone-color, var(--stone-black));
-  box-shadow: inset 0 0 0 1px var(--stone-black-border);
 }
 
 .color-dot[data-team="2"] {
   background: var(--stone-color, var(--stone-white));
+}
+
+/* Outlines follow the swatch's actual color (see stoneTone), not the seat. */
+.color-dot[data-tone="light"] {
   box-shadow: inset 0 0 0 1px var(--stone-white-border);
+}
+
+.color-dot[data-tone="dark"] {
+  box-shadow: inset 0 0 0 1px var(--stone-black-border);
 }
 
 .color-dot[data-team="3"] {

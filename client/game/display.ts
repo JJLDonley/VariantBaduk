@@ -7,7 +7,12 @@ import {
   short,
   timeSettingsText,
 } from "../ui/format.ts";
-import { colorResultPrefix, nearestColorName } from "../ui/color-names.ts";
+import {
+  colorLightness,
+  colorResultPrefix,
+  nearestColorName,
+  oppositeColor,
+} from "../ui/color-names.ts";
 import type { Game, Seat } from "../types/domain.ts";
 import { variantsHtml } from "./variants.ts";
 
@@ -88,9 +93,8 @@ export function gameInfoHtml(game: Game): string {
 
 export function activeStoneHtml(game: Game, index: number): string {
   if (!game.config.variants?.zen || index !== game.turn) return "";
-  return `<i class="color-dot active-stone" data-team="${
-    placementPreviewTeam(game)
-  }" style="--stone-color: ${stoneColor(game, placementPreviewTeam(game))}"></i>`;
+  const team = placementPreviewTeam(game);
+  return colorDotHtml(game, team, team, "active-stone");
 }
 
 export function seatDisplayTeam(game: Game, seat: Seat): number {
@@ -102,6 +106,33 @@ export function stoneColor(game: Game, team: number): string {
   if (color) return color;
   const defaults = ["#080808", "#eeeeee", "#4f9d69", "#e07a5f", "#6c8cff"];
   return defaults[team - 1] ?? "#777777";
+}
+
+/**
+ * How a stone color reads on the board: light stones (like white) need a light outline, very dark
+ * ones (like black) a dark outline in small swatches, everything in between none. Based on the
+ * actual color, not the seat, so Color Go players with custom colors look consistent.
+ */
+export function stoneTone(hex: string): "light" | "dark" | "mid" {
+  const lightness = colorLightness(hex) ?? 50;
+  return lightness >= 70 ? "light" : lightness <= 25 ? "dark" : "mid";
+}
+
+/** Last-move marker: the stone color's opposite (see oppositeColor), for any player color. */
+export function lastMoveDotColor(hex: string): string {
+  return oppositeColor(hex) ?? hex;
+}
+
+/** A team's color swatch, as shown next to players and in the seat list. */
+export function colorDotHtml(
+  game: Game,
+  colorTeam: number,
+  dataTeam: number = colorTeam,
+  className = "",
+): string {
+  const color = stoneColor(game, colorTeam);
+  return `<i class="color-dot${className ? ` ${className}` : ""}" data-team="${dataTeam}" ` +
+    `data-tone="${stoneTone(color)}" style="--stone-color: ${color}"></i>`;
 }
 
 export function teamColorName(game: Game, team: number): string {
@@ -133,9 +164,9 @@ export function seatMetaHtml(game: Game, seat: Seat): string {
 }
 
 export function userHtml(game: Game, seat: Seat): string {
-  return `<div class="user-row"><i class="color-dot" data-team="${seat.team}" style="--stone-color: ${
-    stoneColor(game, seat.team)
-  }"></i>${escapeHtml(seat.publicName ?? short(seat.playerUuid))}</div>`;
+  return `<div class="user-row">${colorDotHtml(game, seat.team)}${
+    escapeHtml(seat.publicName ?? short(seat.playerUuid))
+  }</div>`;
 }
 
 export function viewersHtml(game: Game): string {

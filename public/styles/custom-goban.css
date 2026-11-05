@@ -5,7 +5,7 @@
   inline-size: min(calc(100vw - 8px), 40rem);
   max-block-size: calc(100dvh - 8px);
   max-inline-size: calc(100vw - 8px);
-  overflow: hidden;
+  overflow: hidden auto;
   padding: 2.25rem 4px 4px;
 }
 
@@ -24,12 +24,23 @@
   top: 4px;
 }
 
+/* Toolbar: groups wrap onto separate rows on narrow screens. */
 .custom-goban-controls {
   align-items: center;
-  grid-template-columns: repeat(4, max-content);
-  gap: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
   justify-content: center;
   margin-bottom: 4px;
+}
+
+.custom-goban-tools,
+.custom-goban-fill,
+.custom-goban-size,
+.custom-goban-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.25rem;
 }
 
 .custom-goban-controls button {
@@ -37,30 +48,157 @@
   padding: 0.25rem 0.45rem;
 }
 
+.custom-goban-tools button.is-active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--accent);
+}
+
+.custom-goban-preset {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.custom-goban-size output {
+  font-variant-numeric: tabular-nums;
+  min-inline-size: 1.6rem;
+  text-align: center;
+}
+
+.custom-goban-summary {
+  font-size: 0.85rem;
+  margin: 0 0 4px;
+  text-align: center;
+}
+
+/* Only phone users need the large-board warning. */
+.custom-goban-warning {
+  color: var(--color-danger);
+  display: none;
+}
+
+@media (max-width: 759px) {
+  .custom-goban-warning {
+    display: block;
+  }
+}
+
 .custom-goban-board-wrap {
   display: grid;
   justify-items: center;
   min-height: 0;
-  overflow: hidden;
 }
 
-.custom-goban-board {
-  aspect-ratio: 1 / 1;
-  background: var(--board-bg);
-  gap: 1px;
-  inline-size: min(calc(100vw - 16px), 38rem, calc(100dvh - 7rem));
-  padding: 2px;
+/* The real board (shared .board styles), sized to leave room for the toolbar. Doubled class so
+   it wins over .board's own sizing in board.css, which loads later. */
+.board.custom-goban-board {
+  inline-size: min(
+    calc(100vw - 16px),
+    38rem,
+    calc((100dvh - 13rem) * var(--board-aspect, 1))
+  );
   margin-inline: auto;
 }
 
-.custom-point {
-  background: var(--custom-goban-point-bg);
-  border: 1px solid var(--custom-goban-point-border);
-  min-height: 0;
-  padding: 0;
+.custom-goban-board.is-editable {
+  cursor: crosshair;
+  touch-action: none;
 }
 
-.custom-point.is-removed {
-  background: transparent;
-  border-color: transparent;
+.custom-goban-lines {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+/* One cell per point, exactly one grid step wide, so neighbouring water reads as a sea. */
+.custom-point {
+  /* 1px overlap: cells at fractional positions would otherwise show hairline seams. */
+  block-size: calc(var(--board-step-y, var(--board-step)) + 1px);
+  inline-size: calc(var(--board-step) + 1px);
+  pointer-events: none;
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+/* Water is drawn like in games: the board's background (has-water) with land on top, so the
+   editor, its preview and the game look the same. Water points need no fill of their own. */
+
+/* Editor layout. Phones: stacked (controls, summary, board), no preview. */
+.custom-goban-preview {
+  display: none;
+}
+
+/* Desktop: a large dialog with the controls, summary and an in-game preview on the left and the
+   board as large as fits on the right. */
+@media (min-width: 760px) {
+  .custom-goban-dialog.custom-goban-editor {
+    block-size: calc(100dvh - 2rem);
+    inline-size: min(calc(100vw - 2rem), 96rem);
+    max-block-size: calc(100dvh - 2rem);
+    max-inline-size: calc(100vw - 2rem);
+    overflow: hidden;
+    padding: 2.5rem 1rem 1rem;
+  }
+
+  .custom-goban-layout {
+    block-size: 100%;
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: minmax(15rem, 19rem) minmax(0, 1fr);
+  }
+
+  .custom-goban-side {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-block-size: 0;
+    overflow-y: auto;
+  }
+
+  .custom-goban-editor .custom-goban-controls {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.6rem;
+    justify-content: flex-start;
+    margin: 0;
+  }
+
+  .custom-goban-editor .custom-goban-tools,
+  .custom-goban-editor .custom-goban-fill,
+  .custom-goban-editor .custom-goban-actions {
+    flex-wrap: wrap;
+  }
+
+  .custom-goban-editor .custom-goban-summary {
+    margin: 0;
+    text-align: start;
+  }
+
+  .custom-goban-preview {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+  }
+
+  .custom-goban-preview figcaption {
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+
+  .board.custom-goban-preview-surface {
+    inline-size: min(100%, calc(16rem * var(--board-aspect, 1)));
+  }
+
+  /* The board fills its column: as wide as fits, or as tall as fits for tall boards. */
+  .custom-goban-editor .custom-goban-board-wrap {
+    align-content: center;
+    container-type: size;
+    min-block-size: 0;
+  }
+
+  .custom-goban-editor .board.custom-goban-board {
+    inline-size: min(100cqi, calc(100cqb * var(--board-aspect, 1)));
+  }
 }

@@ -49,8 +49,14 @@ export function startGameListRefresh(
     setEvents(undefined);
     setTimeout(restart, 1000);
   });
-  addEventListener("focus", () => render());
+  // Registered once: this function re-runs after every SSE reconnect.
+  if (!focusRefreshRegistered) {
+    focusRefreshRegistered = true;
+    addEventListener("focus", () => render());
+  }
 }
+
+let focusRefreshRegistered = false;
 
 function gameListItemHtml(game: GameListItem): string {
   const label = game.config?.name || `Game #${game.id}`;

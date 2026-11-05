@@ -1,4 +1,5 @@
 import type { Game } from "../types/domain.ts";
+import { escapeHtml } from "../ui/format.ts";
 
 type VariantRule = { label: string; rule: string; html?: string };
 
@@ -20,7 +21,7 @@ const ALL_VARIANT_RULES: VariantRule[] = [
   {
     label: "Katachi",
     rule:
-      "Each turn, play a card by placing all of its stones (any rotation or mirror, any order, each a legal move) or discard one, then draw. The game ends when both players pass, when a deck runs out, or both agree to scoring. Options: Full places the whole card at once as a single move (every point must be empty; captures, suicide and ko are checked once for the whole shape). Reshuffle shuffles your discards into a new deck when it runs out, so the game only ends by passing.",
+      "Each turn, play a card by placing all of its stones (any rotation or mirror, any order, each a legal move) or discard one, then draw. The game ends when both players pass, when a deck runs out, or both agree to scoring. Full option: place the whole card at once as a single move (every point must be empty; captures, suicide and ko are checked once for the whole shape). Reshuffle option: shuffle your discards into a new deck when it runs out, so the game only ends by passing.",
   },
   {
     label: "Hidden",
@@ -31,6 +32,11 @@ const ALL_VARIANT_RULES: VariantRule[] = [
   {
     label: "Tetris",
     rule: "A move is illegal only if it creates a connected group of exactly 4 stones.",
+  },
+  {
+    label: "Magnetic",
+    rule:
+      "Placing a stone affects the nearest stone in each of the four directions: an opponent stone is pulled in until it touches the new stone, and your own stone is pushed away until it hits a stone or the edge. Only that first stone moves, with no chain reactions. Captures are checked after the stones move, and your own stones left without liberties are captured instead of the move being illegal.",
   },
   { label: "N+1", rule: "Making exactly N stones in a row grants an extra turn." },
   {
@@ -47,6 +53,25 @@ const ALL_VARIANT_RULES: VariantRule[] = [
   },
 ];
 
+/** The rule text for a variant, as shown in the help. */
+export function variantRuleText(label: string): string | undefined {
+  return ALL_VARIANT_RULES.find((rule) => rule.label === label)?.rule;
+}
+
+/** A rule split into sentences, so long rules read as a list instead of one paragraph. */
+export function ruleSentences(rule: string | undefined): string[] {
+  return rule?.split(/(?<=\.)\s+/) ?? [];
+}
+
+/** One sentence stays a line of text; several become bullets. */
+function ruleBodyHtml(rule: string): string {
+  const sentences = ruleSentences(rule);
+  if (sentences.length < 2) return `<p class="rule-body">${escapeHtml(rule)}</p>`;
+  return `<ul class="rule-body">${
+    sentences.map((sentence) => `<li>${escapeHtml(sentence)}</li>`).join("")
+  }</ul>`;
+}
+
 export function variantsHtml(game: Game): string {
   const rules = activeVariantRules(game);
   return rules.map(({ label, rule, html }) =>
@@ -57,9 +82,9 @@ export function variantsHtml(game: Game): string {
 export function inviteRulesHtml(game: Game): string {
   const rules = activeVariantRules(game);
   if (rules.length === 0) return `<p class="muted-text">No active variants.</p>`;
-  return `<ul>${
-    rules.map(({ label, rule }) => `<li><strong>${label}:</strong> ${rule}</li>`).join("")
-  }</ul>`;
+  return rules.map(({ label, rule }) =>
+    `<div class="rule-entry"><strong>${escapeHtml(label)}</strong>${ruleBodyHtml(rule)}</div>`
+  ).join("");
 }
 
 export function variantRulesHelpHtml(game: Game): string {
@@ -79,7 +104,7 @@ export function allVariantRulesHelpHtml(): string {
       <h4>Variant rules</h4>
       ${
     ALL_VARIANT_RULES.map(({ label, rule }) =>
-      `<details><summary>${label}</summary><p>${rule}</p></details>`
+      `<details><summary>${label}</summary>${ruleBodyHtml(rule)}</details>`
     ).join("")
   }
       <h4>Privacy, licensing, and acknowledgements</h4>
@@ -166,6 +191,13 @@ function activeVariantRules(game: Game): VariantRule[] {
         (variants.shapeCardReshuffle
           ? "Reshuffle: an empty deck reshuffles your discards, so the game ends when both players pass and agree to scoring."
           : "The game ends when both players pass, when a deck runs out, or both agree to scoring."),
+    });
+  }
+  if (variants.magnetic) {
+    rules.push({
+      label: "Magnetic",
+      rule:
+        "Placing a stone affects the nearest stone in each of the four directions: an opponent stone is pulled in until it touches the new stone, and your own stone is pushed away until it hits a stone or the edge. Only that first stone moves, with no chain reactions. Captures are checked after the stones move, and your own stones left without liberties are captured instead of the move being illegal.",
     });
   }
   if (variants.tetris) {

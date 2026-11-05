@@ -1,6 +1,7 @@
 import { escapeHtml, short } from "../ui/format.ts";
 import {
   activeStoneHtml,
+  colorDotHtml,
   seatDisplayTeam,
   seatMetaHtml,
   stoneColor,
@@ -32,9 +33,7 @@ function teamColorPlayerListsHtml(game: Game): string {
       .join("") || `<p class="muted-text">None</p>`;
     return `
       <div class="team-users" data-team="${team}">
-        <h4><i class="color-dot" data-team="${team}" style="--stone-color: ${
-      stoneColor(game, team)
-    }"></i>${escapeHtml(teamColorName(game, team))}</h4>
+        <h4>${colorDotHtml(game, team)}${escapeHtml(teamColorName(game, team))}</h4>
         <div class="team-users__players">${players}</div>
       </div>
     `;
@@ -108,9 +107,7 @@ function teamSeatRowHtml(
     open ? 'role="button" tabindex="0"' : 'aria-disabled="true"'
   }>
       <i class="turn-marker">${active}</i>
-      <i class="color-dot" data-team="${seat.team}" style="--stone-color: ${
-    stoneColor(game, seat.team)
-  }"></i>
+      ${colorDotHtml(game, seat.team)}
       <span class="team-seat-player__name">${player}</span>
       ${seatActionHtml(seat, session)}
     </div>
@@ -131,11 +128,9 @@ function playerSeatHtml(
     <div class="seat" data-seat-id="${seat.id}" data-open="${open}" ${
     open ? 'role="button" tabindex="0"' : 'aria-disabled="true"'
   }>
-      <div class="seat-player"><i class="turn-marker">${active}</i>${
-    activeStoneHtml(game, index)
-  }<i class="color-dot" data-team="${seatDisplayTeam(game, seat)}" style="--stone-color: ${
-    stoneColor(game, seat.team)
-  }"></i>${player}</div>
+      <div class="seat-player"><i class="turn-marker">${active}</i>${activeStoneHtml(game, index)}${
+    colorDotHtml(game, seat.team, seatDisplayTeam(game, seat))
+  }${player}</div>
       ${action}
       <div class="seat-time">${seatMetaHtml(game, seat)}</div>
       <div class="seat-points">${formatSeatPoints(displaySeatPoints(game, seat))} pts</div>

@@ -3,10 +3,11 @@ import { joinSeat, leaveSeat } from "../api/http.ts";
 import { currentActionSeat, withCurrentSeat } from "./actions.ts";
 import { clearBoardPreview, placementPointFromEvent, setBoardPreview } from "./board-render.ts";
 import { copyText } from "../ui/clipboard.ts";
+import { confirmJoinOnPhone } from "./board-size-warning.ts";
 import { clearJosekiCardHover, hoverJosekiCardOnBoard } from "./joseki-placement.ts";
 import { openCustomGobanPreview } from "../create/custom-goban.ts";
 import { bindHistoryKeyboardControls, type HistoryNavigationAction } from "./history-controls.ts";
-import { placementPreviewTeam, stoneColor } from "./display.ts";
+import { placementPreviewTeam, stoneColor, stoneTone } from "./display.ts";
 import {
   currentShapeCard,
   currentShapeCardHasBothColors,
@@ -34,7 +35,6 @@ type BindGameEventsOptions = {
   historyKeyController: AbortController | undefined;
   statusElement: Element | null;
   sendAction: (gameId: GameId, action: GameAction) => Promise<void>;
-  renderGameList: () => Promise<void>;
   showGame: (gameId: GameId) => Promise<void>;
   navigateGameHistory: (
     game: Game,
@@ -337,6 +337,7 @@ function bindShapeCards(options: BindGameEventsOptions): void {
     const board = panel.querySelector<HTMLElement>(".board");
     const team = placementPreviewTeam(game);
     board?.setAttribute("data-preview-team", String(team));
+    board?.setAttribute("data-preview-tone", stoneTone(stoneColor(game, team)));
     board?.style.setProperty("--preview-color", stoneColor(game, team));
     bindShapeCards(options);
     // Redraw the stamp where the pointer is, in its new rotation/mirror.
@@ -521,7 +522,7 @@ function bindHistoryButtons(
 }
 
 function bindSeats(
-  { panel, game, statusElement, renderGameList, showGame }: BindGameEventsOptions,
+  { panel, game, statusElement, showGame }: BindGameEventsOptions,
 ): void {
   for (
     const button of panel.querySelectorAll<HTMLElement>(
@@ -531,10 +532,10 @@ function bindSeats(
     const handleJoinSeat = async (event: Event) => {
       if ((event.target as Element | null)?.closest(".seat-action")) return;
       const seatId = button.dataset.seatId;
-      if (!seatId) return;
+      if (!seatId || !(await confirmJoinOnPhone(game))) return;
       const response = await joinSeat(game.id, seatId);
       if (!response.ok) return;
-      await Promise.all([renderGameList(), showGame(game.id)]);
+      await showGame(game.id);
     };
     button.addEventListener("click", handleJoinSeat);
     button.addEventListener("keydown", async (event) => {
@@ -550,10 +551,10 @@ function bindSeats(
       event.stopPropagation();
       const seatId = button.dataset.seatId;
       if (button.dataset.action === "join") {
-        if (!seatId) return;
+        if (!seatId || !(await confirmJoinOnPhone(game))) return;
         const response = await joinSeat(game.id, seatId);
         if (!response.ok) return;
-        await Promise.all([renderGameList(), showGame(game.id)]);
+        await showGame(game.id);
         return;
       }
       if (button.dataset.action === "invite") {
@@ -567,7 +568,7 @@ function bindSeats(
       }
       if (!seatId) return;
       await leaveSeat(game.id, seatId);
-      await Promise.all([renderGameList(), showGame(game.id)]);
+      await showGame(game.id);
     });
   }
 }

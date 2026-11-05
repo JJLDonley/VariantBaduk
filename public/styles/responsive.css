@@ -1,4 +1,16 @@
 @media (max-width: 499px) {
+  /* Compact header so every action fits on narrow phones. */
+  .header,
+  .header-actions {
+    gap: 0.25rem;
+  }
+
+  .header-actions button {
+    block-size: 2rem;
+    min-inline-size: 2rem;
+    padding-inline: 0.3rem;
+  }
+
   h1 {
     font-size: 0;
   }
@@ -33,6 +45,8 @@
 
   .shell {
     align-content: start;
+    /* One column, never wider than the screen: a crowded header must not push the board off. */
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto minmax(0, 1fr);
     gap: var(--gutter-compact);
     height: 100dvh;
@@ -75,6 +89,7 @@
     padding: 0;
   }
 
+  .shell.game-layout .header,
   .shell.game-layout .game-title-row,
   .shell.game-layout .players-panel,
   .shell.game-layout .users-panel {
@@ -122,7 +137,7 @@
     block-size: auto;
     inline-size: min(
       calc(100vw - 2 * var(--gutter-compact)),
-      calc(100dvh - var(--stacked-game-board-offset))
+      calc((100dvh - var(--stacked-game-board-offset)) * var(--board-aspect, 1))
     );
   }
 
@@ -183,6 +198,13 @@
   .landing-help-dialog {
     inline-size: calc(100vw - 1rem);
     max-width: calc(100vw - 1rem);
+  }
+}
+
+/* Katachi controls only configure mouse buttons and keyboard keys. */
+@media (hover: none) and (pointer: coarse) {
+  #katachi-controls {
+    display: none;
   }
 }
 
@@ -365,7 +387,7 @@
     block-size: auto;
     inline-size: min(
       calc(100vw - 2 * var(--gutter-compact)),
-      calc(100dvh - var(--stacked-game-board-offset))
+      calc((100dvh - var(--stacked-game-board-offset)) * var(--board-aspect, 1))
     );
   }
 
@@ -439,8 +461,11 @@
   }
 
   .shell.game-layout.desktop-fit .board {
-    block-size: min(100%, calc(100svh - var(--desktop-game-board-offset)));
-    inline-size: min(100%, calc(100svh - var(--desktop-game-board-offset)));
+    block-size: auto;
+    inline-size: min(
+      100%,
+      calc((100svh - var(--desktop-game-board-offset)) * var(--board-aspect, 1))
+    );
     justify-self: center;
   }
 
@@ -520,7 +545,7 @@
     block-size: auto;
     inline-size: min(
       calc(100vw - 2 * var(--gutter-compact)),
-      calc(100dvh - var(--stacked-game-board-offset))
+      calc((100dvh - var(--stacked-game-board-offset)) * var(--board-aspect, 1))
     );
   }
 
@@ -612,8 +637,11 @@
   }
 
   .shell.game-layout.desktop-fit .board {
-    block-size: min(100%, calc(100svh - var(--desktop-game-board-offset)));
-    inline-size: min(100%, calc(100svh - var(--desktop-game-board-offset)));
+    block-size: auto;
+    inline-size: min(
+      100%,
+      calc((100svh - var(--desktop-game-board-offset)) * var(--board-aspect, 1))
+    );
     justify-self: center;
   }
 

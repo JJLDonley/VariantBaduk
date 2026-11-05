@@ -10,6 +10,8 @@
 
 .game-info-dialog,
 .invite-dialog,
+.board-size-dialog,
+.try-playing,
 .landing-help-dialog {
   background: var(--dialog-bg);
   border: 1px solid var(--dialog-border);
@@ -37,9 +39,26 @@
   margin-top: 1rem;
 }
 
-.invite-rules ul {
-  margin-block: 0.5rem 0;
-  padding-left: 1.25rem;
+/* Rules, in the help and invite dialogs: the variant's name, then its sentences as bullets. */
+.rule-entry {
+  border-top: 1px solid var(--surface-border);
+  padding-block: 0.5rem;
+}
+
+.rule-entry:first-child {
+  border-top: 0;
+  padding-block-start: 0;
+}
+
+.rule-body {
+  line-height: 1.4;
+  margin: 0.3rem 0 0;
+}
+
+ul.rule-body {
+  display: grid;
+  gap: 0.3rem;
+  padding-inline-start: 1.25rem;
 }
 
 /* Dialog layout: the box itself never scrolls, so the close button, title and info
@@ -79,4 +98,44 @@
   padding: 0.2rem 0.45rem;
   position: absolute;
   z-index: 1;
+}
+
+.board-size-dialog h3 {
+  margin-top: 0;
+}
+
+/* "Try playing" popup: long rules scroll in .dialog-scroll, so the buttons stay on screen. */
+.ui-dialog.try-playing {
+  gap: 0.5rem;
+  inline-size: min(30rem, calc(100vw - 2rem));
+}
+
+.try-playing h3,
+.try-playing h4,
+.try-playing ul {
+  margin-block: 0;
+}
+
+.try-playing h4 {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.try-playing ul {
+  display: grid;
+  gap: 0.35rem;
+  padding-inline-start: 1.25rem;
+}
+
+.try-playing__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.board-size-dialog__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
 }

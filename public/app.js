@@ -55,6 +55,12 @@ async function createGame(config) {
 async function getGame(gameId) {
   return await fetch(`/api/games/${gameId}`);
 }
+async function getGameHistory(gameId, from) {
+  return await fetch(`/api/games/${gameId}/history?from=${from}`);
+}
+async function readGameHistory(response) {
+  return await jsonResponse(response);
+}
 async function readGame(response) {
   const body = await jsonResponse(response);
   return body.game;
@@ -79,6 +85,47 @@ async function postGameAction(gameId, action) {
   });
 }
 
+// client/game/history-cache.ts
+function reconcileHistoryBoards(cache, game) {
+  if (!cache || String(cache.gameId) !== String(game.id)) return void 0;
+  if (cache.done !== (game.phase === "done")) return void 0;
+  const keep = Math.max(0, (game.history?.length ?? 0) - 1);
+  return cache.entries.length > keep ? {
+    ...cache,
+    entries: cache.entries.slice(0, keep)
+  } : cache;
+}
+function withHistoryBoards(game, cache) {
+  if (!cache?.entries.length || !game.history) return game;
+  return {
+    ...game,
+    history: game.history.map((entry, index) => {
+      const cached = cache.entries[index];
+      return cached ? {
+        ...entry,
+        ...cached
+      } : entry;
+    })
+  };
+}
+function historyFetchStart(cache, game, index) {
+  const usable = reconcileHistoryBoards(cache, game);
+  const have = usable?.entries.length ?? 0;
+  return index < have ? void 0 : have;
+}
+function addHistoryBoards(cache, game, from, entries) {
+  const base = reconcileHistoryBoards(cache, game) ?? {
+    gameId: game.id,
+    done: game.phase === "done",
+    entries: []
+  };
+  if (from !== base.entries.length) return base;
+  return reconcileHistoryBoards({
+    ...base,
+    entries: base.entries.concat(entries)
+  }, game);
+}
+
 // client/game/actions.ts
 function currentActionSeat(game, session2, mode = game.phase) {
   if (mode === "scoring") {
@@ -97,28 +144,29 @@ function withCurrentSeat(game, session2, action) {
     seatId: seat.id
   } : action;
 }
-async function sendGameAction(gameId, action, statusElement2, renderGame2, renderGameList3, socketState2) {
+async function sendGameAction(gameId, action, statusElement2, renderGame2, socketState2) {
   if (statusElement2) statusElement2.textContent = "Sending\u2026";
   if (socketState2?.gameId === gameId && socketState2.socket?.readyState === WebSocket.OPEN) {
     socketState2.socket.send(JSON.stringify({
       type: "action",
       action
     }));
-    return;
+    return true;
   }
   const response = await postGameAction(gameId, action);
   const body = await response.json();
   if (!response.ok) {
     if (statusElement2) statusElement2.textContent = body.error ?? "Illegal action";
     if (body.game) renderGame2(body.game);
-    return;
+    return false;
   }
   renderGame2(body.game);
-  await renderGameList3();
+  return true;
 }
 function remakeConfig(config) {
   const next = JSON.parse(JSON.stringify(config));
   delete next.name;
+  if (next.time?.main !== void 0) next.time.main /= 60;
   return next;
 }
 
@@ -186,489 +234,588 @@ function showManualCopyDialog(text) {
   input?.select();
 }
 
-// client/create/custom-goban.ts
-var CUSTOM_GOBAN_AUTOSAVE_KEY = "baduk:custom-goban-autosave";
-var CIRCLOID_POINTS = [
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  -1,
-  -1,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  -1,
-  -1,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  -1,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  -1,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  -1,
-  -1,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  -1,
-  -1,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1
-];
-var CIRCLOID_STAR_POINTS = [
+// client/create/goban-presets.ts
+var GOBAN_PRESETS = [
   {
-    x: 10,
-    y: 3
+    id: "circloid",
+    name: "Circloid",
+    description: "A rounded board with the corners removed, and the same 361 points as a 19\xD719.",
+    rows: [
+      ".......#######.......",
+      ".....###########.....",
+      "..#################..",
+      "..########*########..",
+      "..#################..",
+      ".####*#########*####.",
+      ".###################.",
+      "#####################",
+      "#####################",
+      "#####################",
+      "###*######*######*###",
+      "#####################",
+      "#####################",
+      "#####################",
+      ".###################.",
+      ".####*#########*####.",
+      "..#################..",
+      "..########*########..",
+      "..#################..",
+      ".....###########.....",
+      ".......#######......."
+    ]
   },
   {
-    x: 5,
-    y: 5
+    // The main islands, drawn in the board editor, with star points.
+    id: "japan",
+    name: "Japan",
+    description: "The islands of Japan as one connected landmass, with long, narrow land to fight over.",
+    rows: [
+      ".........................................##.....",
+      ".........................................##.....",
+      "........................................####....",
+      ".....................................#########..",
+      ".....................................##*#######.",
+      "....................................###########.",
+      "....................................###...###...",
+      "......................................##...##...",
+      "......................................##...#....",
+      "......................................#####.....",
+      ".......................................#####....",
+      "......................................#######...",
+      "......................................###*###...",
+      "......................................########..",
+      ".....................................#########..",
+      ".....................................########...",
+      "....................................#########...",
+      "....................................#########...",
+      "...................................#######*#....",
+      "..................................##########....",
+      "..................................##*######.....",
+      ".................................#########......",
+      "................................##########......",
+      "..........................####.###########......",
+      "..........................####.###########......",
+      "........................####...###########......",
+      ".......................#####..############......",
+      ".......................###################......",
+      "........................###################.....",
+      "...............#####....##*############*###.....",
+      "............#########..#############.#####......",
+      ".....##############################..#####......",
+      ".....###########*##################....####.....",
+      ".....############################......####.....",
+      "....####.....#......#############......####.....",
+      "....#.......##........############..............",
+      "########....#.......##############..............",
+      "####*####...#########.#.##########..............",
+      "##.####################..###*###................",
+      "########..##########*###..####..................",
+      "..######.####......#####..####..................",
+      "..##*##..##.........#####..###..................",
+      "...####.........................................",
+      "....##.........................................."
+    ]
   },
   {
-    x: 15,
-    y: 5
+    // The lower 48 and Alaska, drawn in the board editor.
+    id: "usa",
+    name: "USA",
+    description: "The lower 48 states, with Alaska as a separate island.",
+    rows: [
+      ".....................................",
+      ".........##..........................",
+      "....########..#######................",
+      ".#.####################..............",
+      ".#.####################..##.......##.",
+      ".######################..###...#####.",
+      ".######################..###.######..",
+      ".#######################.##########..",
+      ".#################################...",
+      ".###############################.....",
+      "..#############################......",
+      "..#############################......",
+      "...###########################.......",
+      "...###########################.......",
+      ".....##########################......",
+      "........#####################........",
+      ".###........#################........",
+      "######......########..###.####.......",
+      ".######........####........###.......",
+      "...##...........###.........###......",
+      ".................##.........###......",
+      ".............................#......."
+    ]
   },
   {
-    x: 3,
-    y: 10
+    // A Go take on the classic four-player arena layout: walled main bases in the corners with
+    // one ramp each, naturals along the edges, a ring of lakes around a central plaza. Rotated
+    // four ways, so every corner is identical.
+    id: "fighting-spirit",
+    name: "Fighting Spirit",
+    description: "Four walled corner bases, each with one opening, around four small lakes in the center.",
+    rows: [
+      "########.#######.########",
+      "########.##..###.########",
+      "########.#######.########",
+      "###*####.#######.####*###",
+      "########.###*###.########",
+      "########.#######.########",
+      "################.########",
+      "################.########",
+      ".........#######.##......",
+      "##########.###.##########",
+      "#########..###..#########",
+      "#######################.#",
+      "#.##*#######*#######*##.#",
+      "#.#######################",
+      "#########..###..#########",
+      "##########.###.##########",
+      "......##.#######.........",
+      "########.################",
+      "########.################",
+      "########.#######.########",
+      "########.###*###.########",
+      "###*####.#######.####*###",
+      "########.#######.########",
+      "########.###..##.########",
+      "########.#######.########"
+    ]
   },
   {
-    x: 10,
-    y: 10
+    // A four-way arena drawn in the board editor: corner bases, walls with gaps and a central
+    // pond. Rotating it 90° gives the same board (it isn't mirrored, hence the name). The
+    // center star point is a single point surrounded by water: no stone can ever be played there.
+    id: "pinwheel",
+    name: "Pinwheel",
+    description: "Four corner bases, spiralling water channels and a central pond. The point in the middle of the pond can't be played.",
+    rows: [
+      "#######.##.######.#######",
+      "#######.##.##############",
+      "#######.##.##############",
+      "###*###.##.##*#######*###",
+      "#######.##.######.#######",
+      "#######.##.######.#######",
+      "#######.###..###..#######",
+      ".###...###########.......",
+      "######.##################",
+      "#########################",
+      "###*#######...#####......",
+      "##########.....###.######",
+      "######.###..*..###.######",
+      "######.###.....##########",
+      "......#####...#######*###",
+      "#########################",
+      "##################.######",
+      ".......###########...###.",
+      "#######..###..###.#######",
+      "#######.######.##.#######",
+      "#######.######.##.#######",
+      "###*######*###.##.###*###",
+      "##############.##.#######",
+      "##############.##.#######",
+      "#######.######.##.#######"
+    ]
   },
   {
-    x: 17,
-    y: 10
-  },
-  {
-    x: 5,
-    y: 15
-  },
-  {
-    x: 15,
-    y: 15
-  },
-  {
-    x: 10,
-    y: 17
+    // A fortress drawn in the board editor: crenellated walls, a diamond moat around a small
+    // central keep, and a checkerboard frame of single-point studs. The studs are surrounded by
+    // water, so they are decorative: no stone can be played on them.
+    id: "citadel",
+    name: "Citadel",
+    description: "A fortress with a moat around a central keep, framed by single-point studs that can't be played.",
+    rows: [
+      "*.*.*.*.*.*.*.*.*.*",
+      ".*.*.*.*.*.*.*.*.*.",
+      "*.*.#.#.#.#.#.#.*.*",
+      ".*.#############.*.",
+      "*.###############.*",
+      ".*.##*#######*##.*.",
+      "*.###############.*",
+      ".*.######.######.*.",
+      "*.######.#.######.*",
+      ".*.####.#*#.####.*.",
+      "*.######.#.######.*",
+      ".*.######.######.*.",
+      "*.###############.*",
+      ".*.##*#######*##.*.",
+      "*.###############.*",
+      ".*.#############.*.",
+      "*.*.#.#.#.#.#.#.*.*",
+      ".*.*.*.*.*.*.*.*.*.",
+      "*.*.*.*.*.*.*.*.*.*"
+    ]
   }
 ];
+function presetGoban(id) {
+  const preset = GOBAN_PRESETS.find((candidate) => candidate.id === id);
+  return preset ? gobanFromRows(preset.rows) : void 0;
+}
+function matchingPresetId(goban) {
+  return GOBAN_PRESETS.find((preset) => {
+    const candidate = gobanFromRows(preset.rows);
+    return candidate.width === goban.width && candidate.height === goban.height && candidate.points.every((point, index) => point === goban.points[index]);
+  })?.id;
+}
+function gobanFromRows(rows) {
+  const width = Math.max(...rows.map((row) => row.length));
+  const points = [];
+  const starPoints = [];
+  rows.forEach((row, y) => {
+    for (let x = 0; x < width; x++) {
+      const cell = row[x] ?? ".";
+      points.push(cell === "." ? -1 : 0);
+      if (cell === "*") starPoints.push({
+        x,
+        y
+      });
+    }
+  });
+  return {
+    width,
+    height: rows.length,
+    points,
+    ...starPoints.length ? {
+      starPoints
+    } : {}
+  };
+}
+
+// client/game/board-utils.ts
+function neighborIndexes(index, width, height) {
+  const x = index % width;
+  const y = Math.floor(index / width);
+  const neighbors = [];
+  if (x > 0) neighbors.push(index - 1);
+  if (x < width - 1) neighbors.push(index + 1);
+  if (y > 0) neighbors.push(index - width);
+  if (y < height - 1) neighbors.push(index + width);
+  return neighbors;
+}
+function isPlayableIntersection(game, x, y) {
+  return x >= 0 && y >= 0 && x < game.boardWidth && y < game.boardHeight && game.board[y * game.boardWidth + x] !== -1;
+}
+function starPointCoords(game) {
+  const customStarPoints = game.config?.customGoban?.starPoints;
+  if (customStarPoints?.length) {
+    return customStarPoints.filter(({ x, y }) => isPlayableIntersection(game, x, y));
+  }
+  const { boardWidth: width, boardHeight: height } = game;
+  if (width !== height) return [];
+  if (width === 9) {
+    return [
+      {
+        x: 2,
+        y: 2
+      },
+      {
+        x: 6,
+        y: 2
+      },
+      {
+        x: 4,
+        y: 4
+      },
+      {
+        x: 2,
+        y: 6
+      },
+      {
+        x: 6,
+        y: 6
+      }
+    ];
+  }
+  if (width === 13) return starGrid([
+    3,
+    6,
+    9
+  ]);
+  if (width === 19) return starGrid([
+    3,
+    9,
+    15
+  ]);
+  return [];
+}
+function boardFrame(game, showCoordinates2, trim = true) {
+  const width = game.boardWidth;
+  const height = game.boardHeight;
+  let firstX = 0;
+  let firstY = 0;
+  let lastX = width - 1;
+  let lastY = height - 1;
+  if (trim) {
+    const playable = game.board.flatMap((point, index) => point === -1 ? [] : [
+      index
+    ]);
+    if (playable.length) {
+      const xs = playable.map((index) => index % width);
+      const ys = playable.map((index) => Math.floor(index / width));
+      [firstX, lastX, firstY, lastY] = [
+        Math.min(...xs),
+        Math.max(...xs),
+        Math.min(...ys),
+        Math.max(...ys)
+      ];
+    }
+  }
+  const columns = lastX - firstX + 1;
+  const rows = lastY - firstY + 1;
+  const side = Math.max(2, columns, rows);
+  const edge = boardEdge(showCoordinates2, side, side);
+  const margin = edge / boardStep(side, edge);
+  const spanX = columns - 1 + 2 * margin;
+  const spanY = rows - 1 + 2 * margin;
+  return {
+    firstX,
+    firstY,
+    columns,
+    rows,
+    stepX: 100 / spanX,
+    stepY: 100 / spanY,
+    edgeX: margin * 100 / spanX,
+    edgeY: margin * 100 / spanY,
+    aspectRatio: spanX / spanY
+  };
+}
+function framePosition(frame, x, y) {
+  return {
+    left: frame.edgeX + (x - frame.firstX) * frame.stepX,
+    top: frame.edgeY + (y - frame.firstY) * frame.stepY
+  };
+}
+function frameGridCoords(frame, leftPercent, topPercent) {
+  return {
+    gx: (leftPercent - frame.edgeX) / frame.stepX + frame.firstX,
+    gy: (topPercent - frame.edgeY) / frame.stepY + frame.firstY
+  };
+}
+function pointPosition(game, index, frame = boardFrame(game, true)) {
+  return framePosition(frame, index % game.boardWidth, Math.floor(index / game.boardWidth));
+}
+function boardEdge(showCoordinates2, width = 19, height = width) {
+  const stoneSafeEdge = 50 / Math.max(1, Math.min(width, height));
+  return showCoordinates2 ? Math.max(7, stoneSafeEdge + 4) : Math.max(3, stoneSafeEdge);
+}
+function boardStep(size, edge = boardEdge(true, size)) {
+  return size <= 1 ? 0 : (100 - edge * 2) / (size - 1);
+}
+function pointLabel(game, index) {
+  const x = index % game.boardWidth;
+  const y = Math.floor(index / game.boardWidth);
+  return `point ${x + 1}, ${y + 1}`;
+}
+function starGrid(values) {
+  return values.flatMap((y) => values.map((x) => ({
+    x,
+    y
+  })));
+}
+
+// client/game/board-render.ts
+function setBoardPreview(board, game, event, showCoordinates2 = true) {
+  const indexes = previewBoardIndexes(board, game, event, showCoordinates2);
+  clearBoardPreview(board);
+  for (const index of indexes) {
+    board.querySelector(`.point[data-index='${index}']`)?.classList.add("is-preview");
+  }
+}
+function clearBoardPreview(board) {
+  for (const point of board?.querySelectorAll(".point.is-preview") ?? []) {
+    point.classList.remove("is-preview");
+  }
+}
+function previewBoardIndexes(board, game, event, showCoordinates2 = true) {
+  const point = placementPointFromEvent(board, game, event, showCoordinates2);
+  if (!point) return [];
+  const points = shouldUsePixelPlacement(game) ? [
+    point,
+    {
+      x: point.x + 1,
+      y: point.y
+    },
+    {
+      x: point.x,
+      y: point.y + 1
+    },
+    {
+      x: point.x + 1,
+      y: point.y + 1
+    }
+  ] : [
+    point
+  ];
+  return points.filter((point2) => point2.x >= 0 && point2.y >= 0 && point2.x < game.boardWidth && point2.y < game.boardHeight).map((point2) => point2.y * game.boardWidth + point2.x).filter((candidate) => game.board[candidate] === 0);
+}
+function placementPointFromEvent(board, game, event, showCoordinates2 = true) {
+  const { gx, gy } = boardGridCoords(board, game, event, showCoordinates2);
+  if (shouldUsePixelPlacement(game)) {
+    const point2 = {
+      x: Math.floor(gx),
+      y: Math.floor(gy)
+    };
+    const hasBoardPoint = [
+      point2,
+      {
+        x: point2.x + 1,
+        y: point2.y
+      },
+      {
+        x: point2.x,
+        y: point2.y + 1
+      },
+      {
+        x: point2.x + 1,
+        y: point2.y + 1
+      }
+    ].some((candidate) => candidate.x >= 0 && candidate.y >= 0 && candidate.x < game.boardWidth && candidate.y < game.boardHeight && game.board[candidate.y * game.boardWidth + candidate.x] !== -1);
+    return hasBoardPoint ? point2 : void 0;
+  }
+  const point = {
+    x: Math.round(gx),
+    y: Math.round(gy)
+  };
+  if (point.x < 0 || point.y < 0 || point.x >= game.boardWidth || point.y >= game.boardHeight) {
+    return void 0;
+  }
+  if (game.board[point.y * game.boardWidth + point.x] === -1) return void 0;
+  return point;
+}
+function shouldUsePixelPlacement(game) {
+  return Boolean(game.config.variants?.pixel && game.phase !== "scoring");
+}
+function boardGridCoords(board, game, event, showCoordinates2 = true) {
+  const rect = board.getBoundingClientRect();
+  return frameGridCoords(boardFrame(game, showCoordinates2), (event.clientX - rect.left) / rect.width * 100, (event.clientY - rect.top) / rect.height * 100);
+}
+function boardGridHtml(game, showCoordinates2 = true, frame = boardFrame(game, showCoordinates2)) {
+  const segments = [];
+  for (let y = 0; y < game.boardHeight; y++) {
+    for (let x = 0; x < game.boardWidth; x++) {
+      if (!isPlayableIntersection(game, x, y)) continue;
+      const { left, top } = framePosition(frame, x, y);
+      if (isPlayableIntersection(game, x + 1, y)) {
+        const right = framePosition(frame, x + 1, y).left;
+        segments.push(`M${svgNumber(left)} ${svgNumber(top)}H${svgNumber(right)}`);
+      }
+      if (isPlayableIntersection(game, x, y + 1)) {
+        const bottom = framePosition(frame, x, y + 1).top;
+        segments.push(`M${svgNumber(left)} ${svgNumber(top)}V${svgNumber(bottom)}`);
+      }
+    }
+  }
+  const grid = boardGridSvg(segments);
+  if (!showCoordinates2) return grid;
+  const horizontalCoords = Array.from({
+    length: game.boardWidth
+  }, (_, x) => {
+    if (!Array.from({
+      length: game.boardHeight
+    }, (_2, y) => isPlayableIntersection(game, x, y)).some(Boolean)) return "";
+    const left = framePosition(frame, x, 0).left;
+    const label = columnLabel(x);
+    return `<span class="coord coord-top" style="left:${left}%">${label}</span><span class="coord coord-bottom" style="left:${left}%">${label}</span>`;
+  }).join("");
+  const verticalCoords = Array.from({
+    length: game.boardHeight
+  }, (_, y) => {
+    if (!Array.from({
+      length: game.boardWidth
+    }, (_2, x) => isPlayableIntersection(game, x, y)).some(Boolean)) return "";
+    const top = framePosition(frame, 0, y).top;
+    const label = game.boardHeight - y;
+    return `<span class="coord coord-left" style="top:${top}%">${label}</span><span class="coord coord-right" style="top:${top}%">${label}</span>`;
+  }).join("");
+  return `${grid}${horizontalCoords}${verticalCoords}`;
+}
+function boardLandHtml(game, frame = boardFrame(game, true)) {
+  if (!game.board.includes(-1)) return "";
+  const halfX = frame.stepX / 2 + frame.stepX * 0.02;
+  const halfY = frame.stepY / 2 + frame.stepY * 0.02;
+  const squares = game.board.flatMap((point, index) => {
+    if (point === -1) return [];
+    const { left, top } = framePosition(frame, index % game.boardWidth, Math.floor(index / game.boardWidth));
+    return [
+      `M${svgNumber(left - halfX)} ${svgNumber(top - halfY)}h${svgNumber(halfX * 2)}v${svgNumber(halfY * 2)}h${svgNumber(-halfX * 2)}z`
+    ];
+  });
+  return `<svg class="board-land" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="${squares.join("")}"/></svg>`;
+}
+var COLUMN_LETTERS = "ABCDEFGHJKLMNOPQRSTUVWXYZ";
+function columnLabel(x) {
+  const letter = COLUMN_LETTERS[x % COLUMN_LETTERS.length];
+  return letter.repeat(Math.floor(x / COLUMN_LETTERS.length) + 1);
+}
+function boardGridSvg(segments) {
+  return `<svg class="board-grid" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="${segments.join("")}" fill="none" stroke-width="1" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/></svg>`;
+}
+function gridStrokeWidth(devicePixelRatio1) {
+  const ratio = devicePixelRatio1 > 0 ? devicePixelRatio1 : 1;
+  const devicePixels = Math.max(1, Math.round(ratio));
+  return `${Number((devicePixels / ratio).toFixed(4))}px`;
+}
+function keepGridLinesCrisp(root = document.documentElement) {
+  const update = () => {
+    root.style.setProperty("--grid-stroke", gridStrokeWidth(devicePixelRatio));
+    matchMedia(`(resolution: ${devicePixelRatio}dppx)`).addEventListener("change", update, {
+      once: true
+    });
+  };
+  update();
+}
+function svgNumber(value) {
+  return Number(value.toFixed(4));
+}
+function starPointsHtml(game, showCoordinates2 = true, frame = boardFrame(game, showCoordinates2)) {
+  const coords = starPointCoords(game).filter(({ x, y }) => isPlayableIntersection(game, x, y));
+  return coords.map(({ x, y }) => {
+    const { left, top } = framePosition(frame, x, y);
+    return `<i class="star-point" style="left:${left}%;top:${top}%"></i>`;
+  }).join("");
+}
+
+// client/shared/custom-board.ts
+var CUSTOM_BOARD_MIN_SIZE = 2;
+var CUSTOM_BOARD_MAX_SIZE = 52;
+var CUSTOM_BOARD_PHONE_FRIENDLY_SIZE = 19;
+function playablePointCount(points) {
+  return points.filter((point) => point !== -1).length;
+}
+function islandCount(width, height, points) {
+  const seen = new Uint8Array(width * height);
+  let islands = 0;
+  for (let start = 0; start < points.length; start++) {
+    if (points[start] === -1 || seen[start]) continue;
+    islands++;
+    const stack = [
+      start
+    ];
+    seen[start] = 1;
+    while (stack.length) {
+      const index = stack.pop();
+      const x = index % width;
+      const y = Math.floor(index / width);
+      const neighbors = [
+        x > 0 ? index - 1 : -1,
+        x < width - 1 ? index + 1 : -1,
+        y > 0 ? index - width : -1,
+        y < height - 1 ? index + width : -1
+      ];
+      for (const next of neighbors) {
+        if (next < 0 || seen[next] || points[next] === -1) continue;
+        seen[next] = 1;
+        stack.push(next);
+      }
+    }
+  }
+  return islands;
+}
+function exceedsPhoneFriendlySize(width, height) {
+  return Math.max(width, height) > CUSTOM_BOARD_PHONE_FRIENDLY_SIZE;
+}
+
+// client/create/custom-goban.ts
+var CUSTOM_GOBAN_AUTOSAVE_KEY = "baduk:custom-goban-autosave";
 function parseCustomGoban(value, fallbackSize = 9) {
   if (!value) return emptyGoban(fallbackSize);
   try {
@@ -677,33 +824,31 @@ function parseCustomGoban(value, fallbackSize = 9) {
     return emptyGoban(fallbackSize);
   }
 }
-function toggleCircloidGoban(root = document) {
+function applyGobanPreset(root = document) {
   const form = root.querySelector("#create-game-form");
   const hidden = form?.querySelector("[name='customGoban']");
   const customGobanToggle = form?.querySelector("[name='customGobanMode']");
-  const circloidToggle = root.querySelector("[name='circloidGobanMode']");
-  if (!form || !hidden || !customGobanToggle || !circloidToggle) return;
-  if (circloidToggle.checked) {
-    hidden.value = JSON.stringify(circloidGoban());
-    customGobanToggle.checked = true;
-  } else {
-    const size = Number(form.querySelector("[name='boardSize']")?.value ?? 9);
-    hidden.value = JSON.stringify(emptyGoban(size));
-    customGobanToggle.checked = true;
-  }
+  const select = root.querySelector("[name='gobanPreset']");
+  if (!form || !hidden || !customGobanToggle || !select) return;
+  const size = Number(form.querySelector("[name='boardSize']")?.value ?? 9);
+  hidden.value = JSON.stringify(presetGoban(select.value) ?? emptyGoban(size));
+  customGobanToggle.checked = true;
   localStorage.setItem(CUSTOM_GOBAN_AUTOSAVE_KEY, hidden.value);
-  refreshCustomGobanPresetButtons(root);
   customGobanToggle.dispatchEvent(new Event("change", {
     bubbles: true
   }));
 }
-function refreshCustomGobanPresetButtons(root = document) {
+function refreshCustomGobanPreset(root = document) {
   const form = root.querySelector("#create-game-form");
   const hidden = form?.querySelector("[name='customGoban']");
-  const customGobanToggle = form?.querySelector("[name='customGobanMode']");
-  const circloidToggle = root.querySelector("[name='circloidGobanMode']");
-  if (!circloidToggle) return;
-  circloidToggle.checked = Boolean(customGobanToggle?.checked && hidden && isCircloidGoban(parseCustomGoban(hidden.value, 21)));
+  const select = root.querySelector("[name='gobanPreset']");
+  if (!select) return;
+  if (select.options.length <= 1) select.insertAdjacentHTML("beforeend", presetOptionsHtml());
+  const goban = hidden?.value ? parseCustomGoban(hidden.value) : void 0;
+  select.value = goban ? matchingPresetId(goban) ?? "" : "";
+}
+function presetOptionsHtml() {
+  return GOBAN_PRESETS.map((preset) => `<option value="${preset.id}">${preset.name}</option>`).join("");
 }
 function restoreCustomGobanAutosave(root = document) {
   const form = root.querySelector("#create-game-form");
@@ -722,7 +867,12 @@ function openCustomGobanPreview(customGoban, statusElement2) {
     height: customGoban.height,
     points: [
       ...customGoban.points
-    ]
+    ],
+    ...customGoban.starPoints ? {
+      starPoints: [
+        ...customGoban.starPoints
+      ]
+    } : {}
   };
   const dialog = document.createElement("dialog");
   dialog.className = "ui-dialog custom-goban-dialog";
@@ -731,14 +881,10 @@ function openCustomGobanPreview(customGoban, statusElement2) {
     <div class="custom-goban-controls">
       <button data-goban="copy" type="button">Copy</button>
     </div>
-    <div class="custom-goban-board-wrap"><div class="custom-goban-board"></div></div>
+    <p class="custom-goban-summary" aria-live="polite">${gobanSummary(goban)}</p>
+    <div class="custom-goban-board-wrap">${customBoardHtml(goban, false)}</div>
   `;
   document.body.append(dialog);
-  const board = dialog.querySelector(".custom-goban-board");
-  if (board) {
-    board.style.gridTemplateColumns = `repeat(${goban.width}, 1fr)`;
-    board.innerHTML = goban.points.map((point) => `<button type="button" class="custom-point ${point === -1 ? "is-removed" : ""}" disabled></button>`).join("");
-  }
   dialog.addEventListener("click", (event) => {
     const target = event.target;
     const action = target?.closest("[data-goban]")?.dataset.goban;
@@ -747,6 +893,77 @@ function openCustomGobanPreview(customGoban, statusElement2) {
   });
   dialog.addEventListener("close", () => dialog.remove());
   dialog.showModal();
+}
+function paintGobanPoint(goban, index, tool) {
+  if (index < 0 || index >= goban.points.length) return false;
+  const x = index % goban.width;
+  const y = Math.floor(index / goban.width);
+  if (tool === "star") {
+    if (goban.points[index] === -1) return false;
+    const stars = gobanStarPoints(goban);
+    const has = stars.some((star) => star.x === x && star.y === y);
+    setStarPoints(goban, has ? stars.filter((star) => star.x !== x || star.y !== y) : [
+      ...stars,
+      {
+        x,
+        y
+      }
+    ]);
+    return true;
+  }
+  const value = tool === "land" ? 0 : -1;
+  if (goban.points[index] === value) return false;
+  goban.points[index] = value;
+  if (value === -1 && goban.starPoints) {
+    setStarPoints(goban, goban.starPoints.filter((star) => star.x !== x || star.y !== y));
+  }
+  return true;
+}
+function gobanLine(width, from, to) {
+  const x0 = from % width;
+  const y0 = Math.floor(from / width);
+  const dx = to % width - x0;
+  const dy = Math.floor(to / width) - y0;
+  const steps = Math.max(Math.abs(dx), Math.abs(dy));
+  if (steps === 0) return [
+    from
+  ];
+  return Array.from({
+    length: steps + 1
+  }, (_, step) => {
+    const x = x0 + Math.round(dx * step / steps);
+    const y = y0 + Math.round(dy * step / steps);
+    return y * width + x;
+  });
+}
+function fillGoban(goban, land) {
+  goban.points = goban.points.map(() => land ? 0 : -1);
+  if (!land) delete goban.starPoints;
+}
+function resizeGoban(goban, width, height) {
+  const nextWidth = clampSize(width);
+  const nextHeight = clampSize(height);
+  const next = Array(nextWidth * nextHeight).fill(0);
+  for (let y = 0; y < Math.min(nextHeight, goban.height); y++) {
+    for (let x = 0; x < Math.min(nextWidth, goban.width); x++) {
+      next[y * nextWidth + x] = goban.points[y * goban.width + x];
+    }
+  }
+  goban.width = nextWidth;
+  goban.height = nextHeight;
+  goban.points = next;
+  if (goban.starPoints) {
+    setStarPoints(goban, goban.starPoints.filter((star) => star.x < nextWidth && star.y < nextHeight));
+  }
+}
+function gobanStarPoints(goban) {
+  return starPointCoords(gobanAsBoard(goban));
+}
+function gobanSummary(goban) {
+  const points = playablePointCount(goban.points);
+  const islands = islandCount(goban.width, goban.height, goban.points);
+  const summary = `${goban.width}\xD7${goban.height} \xB7 ${points} point${points === 1 ? "" : "s"} \xB7 ${islands} island${islands === 1 ? "" : "s"}`;
+  return exceedsPhoneFriendlySize(goban.width, goban.height) ? `${summary}<span class="custom-goban-warning">Larger than 19\xD719: stones will be small and hard to play on phones.</span>` : summary;
 }
 function openCustomGobanEditor(statusElement2) {
   const form = document.querySelector("#create-game-form");
@@ -757,68 +974,144 @@ function openCustomGobanEditor(statusElement2) {
   const autosave = () => {
     hidden.value = JSON.stringify(goban);
     localStorage.setItem(CUSTOM_GOBAN_AUTOSAVE_KEY, hidden.value);
-    refreshCustomGobanPresetButtons();
+    refreshCustomGobanPreset();
   };
   autosave();
+  let tool = "land";
   const dialog = document.createElement("dialog");
-  dialog.className = "ui-dialog custom-goban-dialog";
-  let resizeMode = "both";
+  dialog.className = "ui-dialog custom-goban-dialog custom-goban-editor";
   dialog.innerHTML = `
     <button class="custom-goban-close" data-goban="close" type="button" aria-label="Close">\xD7</button>
+    <div class="custom-goban-layout">
+    <div class="custom-goban-side">
     <div class="custom-goban-controls">
-      <button data-goban="reset" type="button">Reset</button>
-      <button data-goban="save" type="button">Save</button>
-      <button data-goban="copy" type="button">Copy</button>
-      <button data-goban="paste" type="button">Paste</button>
-      <button data-goban="mode" type="button">Both</button>
-      <button data-goban="add" type="button">+</button>
-      <button data-goban="remove" type="button">\u2212</button>
+      <div class="custom-goban-tools" role="radiogroup" aria-label="Paint">
+        <button data-tool="land" type="button" role="radio">Land</button>
+        <button data-tool="water" type="button" role="radio">Water</button>
+        <button data-tool="star" type="button" role="radio">Star</button>
+      </div>
+      <div class="custom-goban-fill">
+        <button data-goban="all-land" type="button">All land</button>
+        <button data-goban="all-water" type="button">All water</button>
+      </div>
+      <div class="custom-goban-size">
+        <span>W</span>
+        <button data-goban="width-down" type="button" aria-label="Narrower">\u2212</button>
+        <output data-goban-width></output>
+        <button data-goban="width-up" type="button" aria-label="Wider">+</button>
+        <span>H</span>
+        <button data-goban="height-down" type="button" aria-label="Shorter">\u2212</button>
+        <output data-goban-height></output>
+        <button data-goban="height-up" type="button" aria-label="Taller">+</button>
+      </div>
+      <label class="custom-goban-preset">
+        Preset
+        <select data-goban-preset aria-label="Load a preset board">
+          <option value="">Choose\u2026</option>${presetOptionsHtml()}
+        </select>
+      </label>
+      <div class="custom-goban-actions">
+        <button data-goban="reset" type="button">Reset</button>
+        <button data-goban="copy" type="button">Copy</button>
+        <button data-goban="paste" type="button">Paste</button>
+        <button data-goban="save" type="button">Save</button>
+      </div>
     </div>
-    <div class="custom-goban-board-wrap"><div class="custom-goban-board"></div></div>
+    <p class="custom-goban-summary" aria-live="polite"></p>
+    <figure class="custom-goban-preview">
+      <figcaption>In game</figcaption>
+      <div class="custom-goban-preview-board"></div>
+    </figure>
+    </div>
+    <div class="custom-goban-board-wrap"></div>
+    </div>
   `;
   document.body.append(dialog);
-  const render = () => {
-    const board = dialog.querySelector(".custom-goban-board");
-    if (!board) return;
-    board.style.gridTemplateColumns = `repeat(${goban.width}, 1fr)`;
-    board.innerHTML = goban.points.map((point, index) => `<button type="button" data-index="${index}" class="custom-point ${point === -1 ? "is-removed" : ""}"></button>`).join("");
-    for (const point of board.querySelectorAll(".custom-point")) {
-      point.addEventListener("click", () => {
-        const index = Number(point.dataset.index);
-        goban.points[index] = goban.points[index] === -1 ? 0 : -1;
-        autosave();
-        render();
-      });
+  const wrap = dialog.querySelector(".custom-goban-board-wrap");
+  const summary = dialog.querySelector(".custom-goban-summary");
+  const preview = dialog.querySelector(".custom-goban-preview-board");
+  const renderInfo = () => {
+    summary.innerHTML = gobanSummary(goban);
+    preview.innerHTML = gamePreviewHtml(goban);
+    dialog.querySelector("[data-goban-width]").textContent = String(goban.width);
+    dialog.querySelector("[data-goban-height]").textContent = String(goban.height);
+    for (const button of dialog.querySelectorAll("[data-tool]")) {
+      const active = button.dataset.tool === tool;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-checked", String(active));
     }
   };
-  const resize = (width, height) => {
-    const next = Array(width * height).fill(0);
-    for (let y = 0; y < Math.min(height, goban.height); y++) {
-      for (let x = 0; x < Math.min(width, goban.width); x++) {
-        next[y * width + x] = goban.points[y * goban.width + x];
-      }
-    }
-    goban.width = width;
-    goban.height = height;
-    goban.points = next;
+  const render = () => {
+    wrap.innerHTML = customBoardHtml(goban, true);
+    renderInfo();
+  };
+  const refreshPoint = (index) => {
+    const board = wrap.querySelector(".custom-goban-board");
+    board?.querySelector(`[data-index="${index}"]`)?.classList.toggle("is-water", goban.points[index] === -1);
+    board?.classList.toggle("has-water", goban.points.includes(-1));
+    const lines = board?.querySelector(".custom-goban-lines");
+    if (lines) lines.innerHTML = customBoardLinesHtml(goban);
+    renderInfo();
+  };
+  let painting = false;
+  let lastPainted;
+  const paintAt = (event) => {
+    const board = wrap.querySelector(".custom-goban-board");
+    const index = board ? gobanIndexAt(board, goban, event.clientX, event.clientY) : void 0;
+    if (index === void 0 || index === lastPainted) return;
+    const stroke = lastPainted === void 0 ? [
+      index
+    ] : gobanLine(goban.width, lastPainted, index);
+    lastPainted = index;
+    const changed = stroke.filter((point) => paintGobanPoint(goban, point, tool));
+    if (changed.length === 0) return;
+    autosave();
+    for (const point of changed) refreshPoint(point);
+  };
+  wrap.addEventListener("pointerdown", (event) => {
+    if (!event.target?.closest(".custom-goban-board")) return;
+    event.preventDefault();
+    wrap.setPointerCapture(event.pointerId);
+    painting = tool !== "star";
+    lastPainted = void 0;
+    paintAt(event);
+  });
+  wrap.addEventListener("pointermove", (event) => {
+    if (painting) paintAt(event);
+  });
+  const stopPainting = () => {
+    painting = false;
+    lastPainted = void 0;
+  };
+  wrap.addEventListener("pointerup", stopPainting);
+  wrap.addEventListener("pointercancel", stopPainting);
+  const change = (update) => {
+    update();
     autosave();
     render();
   };
   dialog.addEventListener("click", (event) => {
     const target = event.target;
+    const toolButton = target?.closest("[data-tool]");
+    if (toolButton) {
+      tool = toolButton.dataset.tool;
+      renderInfo();
+      return;
+    }
     const action = target?.closest("[data-goban]")?.dataset.goban;
     if (!action) return;
-    if (action === "mode") {
-      resizeMode = resizeMode === "row" ? "col" : resizeMode === "col" ? "both" : "row";
-      target.textContent = resizeMode === "row" ? "Row" : resizeMode === "col" ? "Col" : "Both";
+    if (action === "all-land") change(() => fillGoban(goban, true));
+    if (action === "all-water") change(() => fillGoban(goban, false));
+    if (action === "width-up") change(() => resizeGoban(goban, goban.width + 1, goban.height));
+    if (action === "width-down") change(() => resizeGoban(goban, goban.width - 1, goban.height));
+    if (action === "height-up") change(() => resizeGoban(goban, goban.width, goban.height + 1));
+    if (action === "height-down") change(() => resizeGoban(goban, goban.width, goban.height - 1));
+    if (action === "reset") {
+      change(() => {
+        Object.assign(goban, emptyGoban(size));
+        delete goban.starPoints;
+      });
     }
-    if (action === "add") {
-      resize(resizeMode === "row" ? goban.width : Math.min(25, goban.width + 1), resizeMode === "col" ? goban.height : Math.min(25, goban.height + 1));
-    }
-    if (action === "remove") {
-      resize(resizeMode === "row" ? goban.width : Math.max(2, goban.width - 1), resizeMode === "col" ? goban.height : Math.max(2, goban.height - 1));
-    }
-    if (action === "reset") resize(size, size);
     if (action === "save") {
       autosave();
       dialog.close();
@@ -826,41 +1119,90 @@ function openCustomGobanEditor(statusElement2) {
     if (action === "copy") copyText(JSON.stringify(goban), event.target, statusElement2, "Copied");
     if (action === "paste") {
       navigator.clipboard?.readText().then((text) => {
-        const pasted = parseCustomGoban(text, size);
-        goban.width = pasted.width;
-        goban.height = pasted.height;
-        goban.points = pasted.points;
-        autosave();
-        render();
+        change(() => {
+          const pasted = parseCustomGoban(text, size);
+          goban.width = pasted.width;
+          goban.height = pasted.height;
+          goban.points = pasted.points;
+          if (pasted.starPoints) goban.starPoints = pasted.starPoints;
+          else delete goban.starPoints;
+        });
       });
     }
     if (action === "close") dialog.close();
+  });
+  dialog.querySelector("[data-goban-preset]")?.addEventListener("change", (event) => {
+    const select = event.target;
+    const preset = presetGoban(select.value);
+    select.value = "";
+    if (!preset) return;
+    change(() => {
+      delete goban.starPoints;
+      Object.assign(goban, preset);
+    });
   });
   dialog.addEventListener("close", () => dialog.remove());
   render();
   dialog.showModal();
 }
-function circloidGoban() {
-  const width = 21;
-  const height = 21;
+function gamePreviewHtml(goban) {
+  const board = gobanAsBoard(goban);
+  const frame = boardFrame(board, false);
+  const water = goban.points.includes(-1) ? " has-water" : "";
+  return `<div class="board custom-goban-preview-surface${water}" role="img" aria-label="In-game preview" style="--board-step: ${frame.stepX}%; --board-aspect: ${frame.aspectRatio}">${boardLandHtml(board, frame)}${boardGridHtml(board, false, frame)}${starPointsHtml(board, false, frame)}</div>`;
+}
+function customBoardHtml(goban, editable) {
+  const board = gobanAsBoard(goban);
+  const frame = editorFrame(goban);
+  const points = goban.points.map((point, index) => {
+    const position = pointPosition(board, index, frame);
+    const x = index % goban.width;
+    const y = Math.floor(index / goban.width);
+    return `<span class="custom-point${point === -1 ? " is-water" : ""}" data-index="${index}" style="left:${position.left}%;top:${position.top}%" aria-hidden="true" data-x="${x}" data-y="${y}"></span>`;
+  }).join("");
+  const water = goban.points.includes(-1) ? " has-water" : "";
+  return `<div class="board custom-goban-board${editable ? " is-editable" : ""}${water}" role="img" aria-label="Custom board, ${goban.width} by ${goban.height}" style="--board-step: ${frame.stepX}%; --board-step-y: ${frame.stepY}%; --board-aspect: ${frame.aspectRatio}"><div class="custom-goban-lines">${customBoardLinesHtml(goban)}</div>${points}</div>`;
+}
+function customBoardLinesHtml(goban) {
+  const board = gobanAsBoard(goban);
+  const frame = editorFrame(goban);
+  return boardLandHtml(board, frame) + boardGridHtml(board, false, frame) + starPointsHtml(board, false, frame);
+}
+function editorFrame(goban) {
+  return boardFrame(gobanAsBoard(goban), false, false);
+}
+function gobanIndexAt(board, goban, clientX, clientY) {
+  const rect = board.getBoundingClientRect();
+  const { gx, gy } = frameGridCoords(editorFrame(goban), (clientX - rect.left) / rect.width * 100, (clientY - rect.top) / rect.height * 100);
+  const x = Math.round(gx);
+  const y = Math.round(gy);
+  if (x < 0 || y < 0 || x >= goban.width || y >= goban.height) return void 0;
+  return y * goban.width + x;
+}
+function gobanAsBoard(goban) {
   return {
-    width,
-    height,
-    points: [
-      ...CIRCLOID_POINTS
-    ],
-    starPoints: CIRCLOID_STAR_POINTS
+    boardWidth: goban.width,
+    boardHeight: goban.height,
+    board: goban.points,
+    config: {
+      customGoban: goban.starPoints ? {
+        starPoints: goban.starPoints
+      } : {}
+    }
   };
 }
-function isCircloidGoban(goban) {
-  const circloid = circloidGoban();
-  return goban.width === circloid.width && goban.height === circloid.height && goban.points.length === circloid.points.length && goban.points.every((point, index) => point === circloid.points[index]);
+function setStarPoints(goban, stars) {
+  if (stars.length) goban.starPoints = stars;
+  else delete goban.starPoints;
+}
+function clampSize(value) {
+  return Math.min(CUSTOM_BOARD_MAX_SIZE, Math.max(CUSTOM_BOARD_MIN_SIZE, Math.round(value)));
 }
 function normalizeCustomGoban(value, fallbackSize) {
   if (!value || typeof value !== "object") return emptyGoban(fallbackSize);
   const custom = value;
-  const width = boundedInteger(custom.width, 2, 25, fallbackSize);
-  const height = boundedInteger(custom.height, 2, 25, fallbackSize);
+  const width = boundedInteger(custom.width, CUSTOM_BOARD_MIN_SIZE, CUSTOM_BOARD_MAX_SIZE, fallbackSize);
+  const height = boundedInteger(custom.height, CUSTOM_BOARD_MIN_SIZE, CUSTOM_BOARD_MAX_SIZE, fallbackSize);
   const source = Array.isArray(custom.points) ? custom.points : [];
   const points = Array.from({
     length: width * height
@@ -958,6 +1300,7 @@ function gameConfigFromFormData(data) {
       shapeCardFull: data.has("shapeCardFull"),
       shapeCardReshuffle: data.has("shapeCardReshuffle"),
       tetris: data.has("tetris"),
+      magnetic: data.has("magnetic"),
       nPlusOne: data.has("nPlusOne"),
       nPlusOneCount: Number(data.get("nPlusOneCount")),
       traitor: data.has("traitor"),
@@ -974,6 +1317,93 @@ function gameConfigFromFormData(data) {
       ]
     }
   };
+}
+
+// client/shared/variant-conflicts.ts
+var VARIANT_LABELS = {
+  pixel: "Pixel",
+  zen: "Zen",
+  colorGo: "Color Go",
+  phantomMove: "Phantom",
+  hiddenMove: "Hidden",
+  josekiCard: "Joseki Card",
+  shapeCards: "Katachi",
+  tetris: "Tetris",
+  magnetic: "Magnetic",
+  nPlusOne: "N+1",
+  traitor: "Traitor",
+  randomTurn: "Random Turn",
+  teamGo: "Team Go"
+};
+var VARIANT_KEYS = Object.keys(VARIANT_LABELS);
+var VARIANT_CONFLICTS = {
+  josekiCard: [
+    "tetris",
+    "zen",
+    "colorGo"
+  ],
+  hiddenMove: [
+    "zen"
+  ],
+  zen: [
+    "colorGo"
+  ],
+  teamGo: [
+    "zen"
+  ],
+  shapeCards: [
+    "pixel",
+    "nPlusOne",
+    "traitor",
+    "tetris",
+    "zen",
+    "colorGo",
+    "hiddenMove",
+    "phantomMove"
+  ],
+  // Sliding would reveal hidden/phantom stones, and Pixel/Katachi place several stones at once.
+  magnetic: [
+    "pixel",
+    "hiddenMove",
+    "phantomMove",
+    "shapeCards"
+  ],
+  tetris: [
+    "pixel"
+  ]
+};
+function conflictingVariants(key) {
+  const conflicts = new Set(VARIANT_CONFLICTS[key] ?? []);
+  for (const [other, blocked] of Object.entries(VARIANT_CONFLICTS)) {
+    if (blocked?.includes(key)) conflicts.add(other);
+  }
+  return [
+    ...conflicts
+  ];
+}
+function variantConfigProblems(selection2) {
+  const on = (key) => Boolean(selection2.variants[key]);
+  const problems = [];
+  if (on("josekiCard") && selection2.boardSize !== 19) {
+    problems.push("Joseki Card requires a 19\xD719 board.");
+  }
+  if (on("josekiCard") && selection2.customGoban) {
+    problems.push("Joseki Card cannot be combined with Custom board.");
+  }
+  for (const [key, blocked] of Object.entries(VARIANT_CONFLICTS)) {
+    if (!on(key)) continue;
+    const chosen = (blocked ?? []).filter(on).map((other) => VARIANT_LABELS[other]);
+    if (chosen.length) {
+      problems.push(`${VARIANT_LABELS[key]} cannot be combined with ${chosen.join(", ")}.`);
+    }
+  }
+  if (on("shapeCards") && selection2.ruleset === "chinese" && Number(selection2.handicap ?? 0) > 1) {
+    problems.push("Katachi cannot be combined with free handicap placement.");
+  }
+  if (on("tetris") && on("nPlusOne") && Number(selection2.variants.nPlusOneCount) === 4) {
+    problems.push("Tetris cannot be combined with N+1 count 4.");
+  }
+  return problems;
 }
 
 // client/ui/color-names.ts
@@ -1437,6 +1867,31 @@ function nearestColorName(hex) {
 function colorResultPrefix(hex) {
   return FAMILY_PREFIX[nearestNamedColor(hex).family];
 }
+function colorLightness(hex) {
+  return hexToLab(hex)?.[0];
+}
+var MIN_OPPOSITE_CONTRAST = 45;
+function oppositeColor(hex) {
+  const lab = hexToLab(hex);
+  if (!lab) return void 0;
+  const [lightness, a, b] = lab;
+  const flipped = 100 - lightness;
+  const target = lightness >= 50 ? Math.min(flipped, lightness - MIN_OPPOSITE_CONTRAST) : Math.max(flipped, lightness + MIN_OPPOSITE_CONTRAST);
+  const opposite = Math.min(100, Math.max(0, target));
+  for (let chroma = 1; chroma >= 0; chroma -= 0.05) {
+    const rgb = labToRgb([
+      opposite,
+      -a * chroma,
+      -b * chroma
+    ]);
+    if (rgb) return rgbToHex(rgb);
+  }
+  return rgbToHex(labToRgb([
+    opposite,
+    0,
+    0
+  ], true));
+}
 function nearestNamedColor(hex) {
   const lab = hexToLab(hex);
   if (!lab) return NAMED_COLORS[0];
@@ -1466,6 +1921,34 @@ function hexToLab(hex) {
     500 * (fx - fy),
     200 * (fy - fz)
   ];
+}
+function labToRgb([lightness, a, b], clamp = false) {
+  const fy = (lightness + 16) / 116;
+  const fx = fy + a / 500;
+  const fz = fy - b / 200;
+  const invert = (value) => value > 0.206893 ? value ** 3 : (value - 16 / 116) / 7.787;
+  const x = invert(fx) * 0.95047;
+  const y = invert(fy);
+  const z = invert(fz) * 1.08883;
+  const linear = [
+    3.2404542 * x - 1.5371385 * y - 0.4985314 * z,
+    -0.969266 * x + 1.8760108 * y + 0.041556 * z,
+    0.0556434 * x - 0.2040259 * y + 1.0572252 * z
+  ];
+  const channels = linear.map((value) => value <= 31308e-7 ? 12.92 * value : 1.055 * Math.max(value, 0) ** (1 / 2.4) - 0.055);
+  const epsilon = 5e-4;
+  if (!clamp && channels.some((value) => value < -epsilon || value > 1 + epsilon)) {
+    return void 0;
+  }
+  const [red, green, blue] = channels.map((value) => Math.min(1, Math.max(0, value)));
+  return [
+    red,
+    green,
+    blue
+  ];
+}
+function rgbToHex(rgb) {
+  return `#${rgb.map((value) => Math.round(value * 255).toString(16).padStart(2, "0")).join("")}`;
 }
 function labDistance(first, second) {
   return Math.hypot(first[0] - second[0], first[1] - second[1], first[2] - second[2]);
@@ -1697,117 +2180,58 @@ function updateVariantOptions() {
     scrollTo(0, 0);
   });
 }
-var SHAPE_CARD_BLOCKED = [
-  [
-    "pixel",
-    "Pixel"
-  ],
-  [
-    "nPlusOne",
-    "N+1"
-  ],
-  [
-    "traitor",
-    "Traitor"
-  ],
-  [
-    "tetris",
-    "Tetris"
-  ],
-  [
-    "zen",
-    "Zen"
-  ],
-  [
-    "colorGo",
-    "Color Go"
-  ],
-  [
-    "hiddenMove",
-    "Hidden"
-  ],
-  [
-    "phantomMove",
-    "Phantom"
-  ]
-];
 function invalidVariantComboMessage(data) {
-  if (data.has("josekiCard") && Number(data.get("boardSize")) !== 19) {
-    return "Joseki Card requires a 19\xD719 board.";
-  }
-  if (data.has("josekiCard") && (data.has("customGobanMode") || data.has("tetris") || data.has("zen") || data.has("colorGo"))) {
-    return "Joseki Card cannot be combined with Custom board, Tetris, Zen, or Color Go.";
-  }
-  if (data.has("hiddenMove") && data.has("zen")) return "Hidden cannot be combined with Zen.";
-  if (data.has("zen") && data.has("colorGo")) return "Zen cannot be combined with Color Go.";
-  if (data.has("teamGo") && data.has("zen")) {
-    return "Team Go cannot be combined with Zen.";
-  }
-  if (data.has("shapeCards")) {
-    const blocked = SHAPE_CARD_BLOCKED.filter(([name]) => data.has(name)).map(([, label]) => label);
-    if (blocked.length) return `Katachi cannot be combined with ${blocked.join(", ")}.`;
-    if (data.get("ruleset") === "chinese" && Number(data.get("handicap") ?? 0) > 1) {
-      return "Katachi cannot be combined with free handicap placement.";
-    }
-  }
-  if (data.has("tetris") && data.has("pixel")) return "Tetris cannot be combined with Pixel.";
-  if (data.has("tetris") && data.has("nPlusOne") && Number(data.get("nPlusOneCount")) === 4) {
-    return "Tetris cannot be combined with N+1 count 4.";
-  }
-  return "";
+  return variantConfigProblems({
+    variants: {
+      ...Object.fromEntries(VARIANT_KEYS.map((key) => [
+        key,
+        data.has(key)
+      ])),
+      nPlusOneCount: Number(data.get("nPlusOneCount"))
+    },
+    boardSize: Number(data.get("boardSize")),
+    customGoban: data.has("customGobanMode"),
+    ruleset: String(data.get("ruleset") ?? ""),
+    handicap: Number(data.get("handicap") ?? 0)
+  })[0] ?? "";
 }
 function updateVariantConflicts() {
   const boardSize = document.querySelector("[name='boardSize']");
   const josekiCard = document.querySelector("[name='josekiCard']");
   const customGoban = document.querySelector("[name='customGobanMode']");
   const tetris = document.querySelector("[name='tetris']");
-  const pixel = document.querySelector("[name='pixel']");
-  const zen = document.querySelector("[name='zen']");
-  const colorGo = document.querySelector("[name='colorGo']");
-  const teamGo = document.querySelector("[name='teamGo']");
-  const hiddenMove = document.querySelector("[name='hiddenMove']");
   const nPlusOne = document.querySelector("[name='nPlusOne']");
   const nPlusOneCount = document.querySelector("[name='nPlusOneCount']");
-  if (!boardSize || !josekiCard || !customGoban || !tetris || !pixel || !zen || !colorGo || !teamGo || !hiddenMove || !nPlusOne || !nPlusOneCount) return;
-  resolveExclusivePair(tetris, pixel);
-  resolveExclusivePair(zen, colorGo);
-  resolveExclusivePair(zen, teamGo);
-  resolveExclusivePair(zen, hiddenMove);
+  if (!boardSize || !josekiCard || !customGoban || !tetris || !nPlusOne || !nPlusOneCount) return;
+  const variants = new Map(VARIANT_KEYS.flatMap((key) => {
+    const input = document.querySelector(`[name='${key}']`);
+    return input ? [
+      [
+        key,
+        input
+      ]
+    ] : [];
+  }));
+  for (const [key, input] of variants) {
+    for (const other of conflictingVariants(key)) {
+      const otherInput = variants.get(other);
+      if (otherInput) resolveExclusivePair(input, otherInput);
+    }
+  }
   if (josekiCard.checked) {
     boardSize.value = "19";
     if (customGoban.checked) customGoban.checked = false;
-    if (tetris.checked) tetris.checked = false;
-    if (zen.checked) zen.checked = false;
-    if (colorGo.checked) colorGo.checked = false;
   }
   const tetrisBlockedByNPlusOne = nPlusOne.checked && Number(nPlusOneCount.value) === 4;
   if (tetrisBlockedByNPlusOne && tetris.checked) tetris.checked = false;
-  const tetrisChecked = tetris.checked;
-  setVariantDisabled(pixel, tetrisChecked);
+  for (const [key, input] of variants) {
+    setVariantDisabled(input, conflictingVariants(key).some((other) => variants.get(other)?.checked));
+  }
+  if (tetrisBlockedByNPlusOne) setVariantDisabled(tetris, true);
+  if (customGoban.checked) setVariantDisabled(josekiCard, true);
   setVariantDisabled(customGoban, josekiCard.checked);
-  setVariantDisabled(tetris, pixel.checked || tetrisBlockedByNPlusOne || josekiCard.checked);
-  setVariantDisabled(colorGo, zen.checked || josekiCard.checked);
-  setVariantDisabled(teamGo, zen.checked);
-  setVariantDisabled(hiddenMove, zen.checked);
-  setVariantDisabled(zen, colorGo.checked || teamGo.checked || hiddenMove.checked || josekiCard.checked);
-  setVariantDisabled(josekiCard, customGoban.checked || tetris.checked || zen.checked || colorGo.checked);
   boardSize.setCustomValidity(josekiCard.checked && Number(boardSize.value) !== 19 ? "Joseki Card requires a 19\xD719 board." : "");
-  nPlusOneCount.setCustomValidity(tetrisChecked && Number(nPlusOneCount.value) === 4 ? "Tetris cannot use N+1 count 4." : "");
-  updateShapeCardConflicts();
-}
-function updateShapeCardConflicts() {
-  const shapeCards = document.querySelector("[name='shapeCards']");
-  if (!shapeCards) return;
-  const blocked = SHAPE_CARD_BLOCKED.map(([name]) => document.querySelector(`[name='${name}']`)).filter((input) => Boolean(input));
-  if (shapeCards.checked && document.activeElement === shapeCards) {
-    for (const input of blocked) input.checked = false;
-  }
-  const anyBlocked = blocked.some((input) => input.checked);
-  if (anyBlocked && shapeCards.checked) shapeCards.checked = false;
-  if (shapeCards.checked) {
-    for (const input of blocked) setVariantDisabled(input, true);
-  }
-  setVariantDisabled(shapeCards, anyBlocked);
+  nPlusOneCount.setCustomValidity(tetris.checked && Number(nPlusOneCount.value) === 4 ? "Tetris cannot use N+1 count 4." : "");
 }
 function resolveExclusivePair(first, second) {
   if (!first.checked || !second.checked) return;
@@ -2314,7 +2738,7 @@ async function openShapeCardDialog(statusElement2) {
 // client/create/form-bind.ts
 function bindCreateGameForm(submitHandler, statusElement2, root = document) {
   restoreCustomGobanAutosave(root);
-  refreshCustomGobanPresetButtons(root);
+  refreshCustomGobanPreset(root);
   root.querySelector("#create-game-form")?.addEventListener("submit", submitHandler);
   root.querySelector("[name='timeSystem']")?.addEventListener("change", updateTimeOptions);
   root.querySelector("[name='ruleset']")?.addEventListener("change", updateRuleDefaults);
@@ -2322,7 +2746,7 @@ function bindCreateGameForm(submitHandler, statusElement2, root = document) {
   for (const button of root.querySelectorAll("[data-board-size-option]")) {
     button.addEventListener("click", (event) => {
       selectBoardSizeOption(event);
-      refreshCustomGobanPresetButtons(root);
+      refreshCustomGobanPreset(root);
     });
   }
   root.querySelector("[name='colorGoPlayerCount']")?.addEventListener("change", () => {
@@ -2343,14 +2767,14 @@ function bindCreateGameForm(submitHandler, statusElement2, root = document) {
     });
   }
   root.querySelector(".custom-goban-open")?.addEventListener("click", () => openCustomGobanEditor(statusElement2));
-  root.querySelector("[name='circloidGobanMode']")?.addEventListener("change", () => toggleCircloidGoban(root));
+  root.querySelector("[name='gobanPreset']")?.addEventListener("change", () => applyGobanPreset(root));
   root.querySelector(".shape-card-open")?.addEventListener("click", () => openShapeCardDialog(statusElement2));
   root.querySelector(".joseki-card-open")?.addEventListener("click", () => openJosekiCardDialog(statusElement2));
   root.querySelector("[data-seat-toggle]")?.addEventListener("click", cycleCreatorSeat);
   for (const input of root.querySelectorAll(".variant-button input")) {
     input.addEventListener("change", updateVariantOptions);
     input.addEventListener("change", updateCreatorSeatOptions);
-    input.addEventListener("change", () => refreshCustomGobanPresetButtons(root));
+    input.addEventListener("change", () => refreshCustomGobanPreset(root));
   }
   refreshCreateGameForm();
 }
@@ -2361,7 +2785,7 @@ function refreshCreateGameForm() {
   updateTeamColorNames();
   updateVariantOptions();
   updateCreatorSeatOptions();
-  refreshCustomGobanPresetButtons();
+  refreshCustomGobanPreset();
 }
 
 // client/game/variants.ts
@@ -2400,7 +2824,7 @@ var ALL_VARIANT_RULES = [
   },
   {
     label: "Katachi",
-    rule: "Each turn, play a card by placing all of its stones (any rotation or mirror, any order, each a legal move) or discard one, then draw. The game ends when both players pass, when a deck runs out, or both agree to scoring. Options: Full places the whole card at once as a single move (every point must be empty; captures, suicide and ko are checked once for the whole shape). Reshuffle shuffles your discards into a new deck when it runs out, so the game only ends by passing."
+    rule: "Each turn, play a card by placing all of its stones (any rotation or mirror, any order, each a legal move) or discard one, then draw. The game ends when both players pass, when a deck runs out, or both agree to scoring. Full option: place the whole card at once as a single move (every point must be empty; captures, suicide and ko are checked once for the whole shape). Reshuffle option: shuffle your discards into a new deck when it runs out, so the game only ends by passing."
   },
   {
     label: "Hidden",
@@ -2409,6 +2833,10 @@ var ALL_VARIANT_RULES = [
   {
     label: "Tetris",
     rule: "A move is illegal only if it creates a connected group of exactly 4 stones."
+  },
+  {
+    label: "Magnetic",
+    rule: "Placing a stone affects the nearest stone in each of the four directions: an opponent stone is pulled in until it touches the new stone, and your own stone is pushed away until it hits a stone or the edge. Only that first stone moves, with no chain reactions. Captures are checked after the stones move, and your own stones left without liberties are captured instead of the move being illegal."
   },
   {
     label: "N+1",
@@ -2427,6 +2855,17 @@ var ALL_VARIANT_RULES = [
     rule: "Some stones may play as another color, using either a move limit or fixed chance."
   }
 ];
+function variantRuleText(label) {
+  return ALL_VARIANT_RULES.find((rule) => rule.label === label)?.rule;
+}
+function ruleSentences(rule) {
+  return rule?.split(/(?<=\.)\s+/) ?? [];
+}
+function ruleBodyHtml(rule) {
+  const sentences = ruleSentences(rule);
+  if (sentences.length < 2) return `<p class="rule-body">${escapeHtml(rule)}</p>`;
+  return `<ul class="rule-body">${sentences.map((sentence) => `<li>${escapeHtml(sentence)}</li>`).join("")}</ul>`;
+}
 function variantsHtml(game) {
   const rules = activeVariantRules(game);
   return rules.map(({ label, rule, html }) => html ?? `<span title="${escapeAttr(rule)}">${label}</span>`).join(", ") || "None";
@@ -2434,7 +2873,7 @@ function variantsHtml(game) {
 function inviteRulesHtml(game) {
   const rules = activeVariantRules(game);
   if (rules.length === 0) return `<p class="muted-text">No active variants.</p>`;
-  return `<ul>${rules.map(({ label, rule }) => `<li><strong>${label}:</strong> ${rule}</li>`).join("")}</ul>`;
+  return rules.map(({ label, rule }) => `<div class="rule-entry"><strong>${escapeHtml(label)}</strong>${ruleBodyHtml(rule)}</div>`).join("");
 }
 function variantRulesHelpHtml(game) {
   return `
@@ -2450,7 +2889,7 @@ function allVariantRulesHelpHtml() {
       <h3>Help</h3>
       <p>Create or join a game. In a game, this help button shows rules for active variants.</p>
       <h4>Variant rules</h4>
-      ${ALL_VARIANT_RULES.map(({ label, rule }) => `<details><summary>${label}</summary><p>${rule}</p></details>`).join("")}
+      ${ALL_VARIANT_RULES.map(({ label, rule }) => `<details><summary>${label}</summary>${ruleBodyHtml(rule)}</details>`).join("")}
       <h4>Privacy, licensing, and acknowledgements</h4>
       <details>
         <summary>Privacy</summary>
@@ -2530,6 +2969,12 @@ function activeVariantRules(game) {
       rule: `Hand of ${variants.shapeCardHandSize ?? 4}. ` + (variants.shapeCardFull ? "Full: each turn, play a whole card at once as one move (any rotation or mirror; every point must be empty) or discard one, then draw. " : "Each turn, play a card by placing all of its stones (any rotation or mirror, any order, each a legal move) or discard one, then draw. ") + (variants.shapeCardReshuffle ? "Reshuffle: an empty deck reshuffles your discards, so the game ends when both players pass and agree to scoring." : "The game ends when both players pass, when a deck runs out, or both agree to scoring.")
     });
   }
+  if (variants.magnetic) {
+    rules.push({
+      label: "Magnetic",
+      rule: "Placing a stone affects the nearest stone in each of the four directions: an opponent stone is pulled in until it touches the new stone, and your own stone is pushed away until it hits a stone or the edge. Only that first stone moves, with no chain reactions. Captures are checked after the stones move, and your own stones left without liberties are captured instead of the move being illegal."
+    });
+  }
   if (variants.tetris) {
     rules.push({
       label: "Tetris",
@@ -2572,6 +3017,102 @@ function activeVariantRules(game) {
 }
 function escapeAttr(value) {
   return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
+}
+
+// client/create/try-playing.ts
+var TRY_PLAYING_SUGGESTIONS = [
+  ...VARIANT_KEYS.map((id) => ({
+    kind: "variant",
+    id,
+    name: VARIANT_LABELS[id],
+    rules: ruleSentences(variantRuleText(VARIANT_LABELS[id]))
+  })),
+  ...GOBAN_PRESETS.map(({ id, name, description }) => ({
+    kind: "board",
+    id,
+    name: `${name} board`,
+    rules: [
+      description
+    ]
+  }))
+];
+function pickSuggestion(random = Math.random) {
+  const index = Math.floor(random() * TRY_PLAYING_SUGGESTIONS.length);
+  return TRY_PLAYING_SUGGESTIONS[Math.min(index, TRY_PLAYING_SUGGESTIONS.length - 1)];
+}
+var NEVER_KEY = "baduk:try-playing-closed";
+function shouldShowTryPlaying(permanent) {
+  try {
+    return permanent.getItem(NEVER_KEY) === null;
+  } catch {
+    return false;
+  }
+}
+function closeForGood() {
+  try {
+    localStorage.setItem(NEVER_KEY, "true");
+  } catch {
+  }
+}
+function showTryPlaying() {
+  removeTryPlaying();
+  if (!shouldShowTryPlaying(localStorage)) return;
+  const suggestion = pickSuggestion();
+  const dialog = document.createElement("dialog");
+  dialog.className = "ui-dialog try-playing";
+  dialog.innerHTML = `
+    <button class="dialog-close" type="button" data-try="close" aria-label="Close">\xD7</button>
+    <h3>Try playing: ${escapeHtml(suggestion.name)}</h3>
+    <h4>How it plays</h4>
+    <ul class="dialog-scroll" tabindex="0">
+      ${suggestion.rules.map((rule) => `<li>${escapeHtml(rule)}</li>`).join("")}
+    </ul>
+    <div class="try-playing__actions">
+      <button type="button" data-try="never">Don't show again</button>
+      <button type="button" data-try="go" autofocus>Try it</button>
+    </div>
+  `;
+  dialog.addEventListener("click", (event) => {
+    const action = event.target?.closest("[data-try]")?.dataset.try;
+    if (!action) return;
+    dialog.close();
+    if (action === "go") applySuggestion(suggestion);
+    if (action === "never") closeForGood();
+  });
+  dialog.addEventListener("close", () => dialog.remove());
+  document.body.append(dialog);
+  dialog.showModal();
+}
+function removeTryPlaying() {
+  document.querySelector(".try-playing")?.remove();
+}
+function applySuggestion(suggestion) {
+  for (const input of document.querySelectorAll(".variant-buttons input")) {
+    input.checked = false;
+  }
+  const customBoard = document.querySelector("[name='customGobanMode']");
+  if (customBoard) customBoard.checked = false;
+  let shown = null;
+  if (suggestion.kind === "board") {
+    const select = document.querySelector("[name='gobanPreset']");
+    if (select) select.value = suggestion.id;
+    applyGobanPreset();
+    shown = document.querySelector(".custom-board-settings");
+    updateVariantOptions();
+  } else {
+    const input = document.querySelector(`[name='${suggestion.id}']`);
+    if (input) {
+      input.checked = true;
+      input.dispatchEvent(new Event("change", {
+        bubbles: true
+      }));
+    }
+    shown = input?.closest(".variant-button") ?? null;
+  }
+  updateBoardSizeButtons();
+  shown?.scrollIntoView({
+    block: "center"
+  });
 }
 
 // client/game/display.ts
@@ -2635,7 +3176,8 @@ function gameInfoHtml(game) {
 }
 function activeStoneHtml(game, index) {
   if (!game.config.variants?.zen || index !== game.turn) return "";
-  return `<i class="color-dot active-stone" data-team="${placementPreviewTeam(game)}" style="--stone-color: ${stoneColor(game, placementPreviewTeam(game))}"></i>`;
+  const team = placementPreviewTeam(game);
+  return colorDotHtml(game, team, team, "active-stone");
 }
 function seatDisplayTeam(game, seat) {
   return game.config.variants?.zen ? 0 : seat.team;
@@ -2651,6 +3193,17 @@ function stoneColor(game, team) {
     "#6c8cff"
   ];
   return defaults[team - 1] ?? "#777777";
+}
+function stoneTone(hex) {
+  const lightness = colorLightness(hex) ?? 50;
+  return lightness >= 70 ? "light" : lightness <= 25 ? "dark" : "mid";
+}
+function lastMoveDotColor(hex) {
+  return oppositeColor(hex) ?? hex;
+}
+function colorDotHtml(game, colorTeam, dataTeam = colorTeam, className = "") {
+  const color = stoneColor(game, colorTeam);
+  return `<i class="color-dot${className ? ` ${className}` : ""}" data-team="${dataTeam}" data-tone="${stoneTone(color)}" style="--stone-color: ${color}"></i>`;
 }
 function teamColorName(game, team) {
   return nearestColorName(stoneColor(game, team));
@@ -2727,222 +3280,72 @@ function currentSeatTime(game, seat) {
   return display;
 }
 
-// client/game/board-utils.ts
-function neighborIndexes(index, width, height) {
-  const x = index % width;
-  const y = Math.floor(index / width);
-  const neighbors = [];
-  if (x > 0) neighbors.push(index - 1);
-  if (x < width - 1) neighbors.push(index + 1);
-  if (y > 0) neighbors.push(index - width);
-  if (y < height - 1) neighbors.push(index + width);
-  return neighbors;
+// client/game/optimistic.ts
+var PREVIEW_SAFE_SWITCHES = /* @__PURE__ */ new Set([
+  "capturesGivePoints"
+]);
+function isPlainGame(game) {
+  return Object.entries(game.config.variants ?? {}).every(([key, value]) => typeof value !== "boolean" || !value || PREVIEW_SAFE_SWITCHES.has(key));
 }
-function isPlayableIntersection(game, x, y) {
-  return x >= 0 && y >= 0 && x < game.boardWidth && y < game.boardHeight && game.board[y * game.boardWidth + x] !== -1;
-}
-function starPointCoords(game) {
-  const customStarPoints = game.config?.customGoban?.starPoints;
-  if (customStarPoints?.length) {
-    return customStarPoints.filter(({ x, y }) => isPlayableIntersection(game, x, y));
-  }
-  const { boardWidth: width, boardHeight: height } = game;
-  if (width !== height) return [];
-  if (width === 9) {
-    return [
-      {
-        x: 2,
-        y: 2
-      },
-      {
-        x: 6,
-        y: 2
-      },
-      {
-        x: 4,
-        y: 4
-      },
-      {
-        x: 2,
-        y: 6
-      },
-      {
-        x: 6,
-        y: 6
-      }
-    ];
-  }
-  if (width === 13) return starGrid([
-    3,
-    6,
-    9
-  ]);
-  if (width === 19) return starGrid([
-    3,
-    9,
-    15
-  ]);
-  return [];
-}
-function pointPosition(game, index, edge = boardEdge(true, game.boardWidth, game.boardHeight)) {
-  const x = index % game.boardWidth;
-  const y = Math.floor(index / game.boardWidth);
-  return {
-    left: edge + x * boardStep(game.boardWidth, edge),
-    top: edge + y * boardStep(game.boardHeight, edge)
-  };
-}
-function boardEdge(showCoordinates2, width = 19, height = width) {
-  const stoneSafeEdge = 50 / Math.max(1, Math.min(width, height));
-  return showCoordinates2 ? Math.max(7, stoneSafeEdge + 4) : Math.max(3, stoneSafeEdge);
-}
-function boardStep(size, edge = boardEdge(true, size)) {
-  return size <= 1 ? 0 : (100 - edge * 2) / (size - 1);
-}
-function pointLabel(game, index) {
-  const x = index % game.boardWidth;
-  const y = Math.floor(index / game.boardWidth);
-  return `point ${x + 1}, ${y + 1}`;
-}
-function starGrid(values) {
-  return values.flatMap((y) => values.map((x) => ({
-    x,
-    y
-  })));
-}
-
-// client/game/board-render.ts
-function setBoardPreview(board, game, event, showCoordinates2 = true) {
-  const indexes = previewBoardIndexes(board, game, event, showCoordinates2);
-  clearBoardPreview(board);
-  for (const index of indexes) {
-    board.querySelector(`.point[data-index='${index}']`)?.classList.add("is-preview");
-  }
-}
-function clearBoardPreview(board) {
-  for (const point of board?.querySelectorAll(".point.is-preview") ?? []) {
-    point.classList.remove("is-preview");
-  }
-}
-function previewBoardIndexes(board, game, event, showCoordinates2 = true) {
-  const point = placementPointFromEvent(board, game, event, showCoordinates2);
-  if (!point) return [];
-  const points = shouldUsePixelPlacement(game) ? [
-    point,
-    {
-      x: point.x + 1,
-      y: point.y
-    },
-    {
-      x: point.x,
-      y: point.y + 1
-    },
-    {
-      x: point.x + 1,
-      y: point.y + 1
-    }
-  ] : [
-    point
-  ];
-  return points.filter((point2) => point2.x >= 0 && point2.y >= 0 && point2.x < game.boardWidth && point2.y < game.boardHeight).map((point2) => point2.y * game.boardWidth + point2.x).filter((candidate) => game.board[candidate] === 0);
-}
-function placementPointFromEvent(board, game, event, showCoordinates2 = true) {
-  const { gx, gy } = boardGridCoords(board, game, event, showCoordinates2);
-  if (shouldUsePixelPlacement(game)) {
-    const point2 = {
-      x: Math.floor(gx),
-      y: Math.floor(gy)
-    };
-    const hasBoardPoint = [
-      point2,
-      {
-        x: point2.x + 1,
-        y: point2.y
-      },
-      {
-        x: point2.x,
-        y: point2.y + 1
-      },
-      {
-        x: point2.x + 1,
-        y: point2.y + 1
-      }
-    ].some((candidate) => candidate.x >= 0 && candidate.y >= 0 && candidate.x < game.boardWidth && candidate.y < game.boardHeight && game.board[candidate.y * game.boardWidth + candidate.x] !== -1);
-    return hasBoardPoint ? point2 : void 0;
-  }
-  const point = {
-    x: Math.round(gx),
-    y: Math.round(gy)
-  };
-  if (point.x < 0 || point.y < 0 || point.x >= game.boardWidth || point.y >= game.boardHeight) {
+function optimisticPlacement(game, session2, action, pending) {
+  if (pending || action.type !== "place" || game.phase !== "play") return void 0;
+  if (!isPlainGame(game)) return void 0;
+  const { x, y } = action;
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= game.boardWidth || y >= game.boardHeight) {
     return void 0;
   }
-  if (game.board[point.y * game.boardWidth + point.x] === -1) return void 0;
-  return point;
-}
-function shouldUsePixelPlacement(game) {
-  return Boolean(game.config.variants?.pixel && game.phase !== "scoring");
-}
-function boardGridCoords(board, game, event, showCoordinates2 = true) {
-  const rect = board.getBoundingClientRect();
-  const px = (event.clientX - rect.left) / rect.width * 100;
-  const py = (event.clientY - rect.top) / rect.height * 100;
-  const edge = boardEdge(showCoordinates2, game.boardWidth, game.boardHeight);
+  const index = y * game.boardWidth + x;
+  if (game.board[index] !== 0) return void 0;
+  const seat = currentActionSeat(game, session2, "play");
+  if (!seat) return void 0;
   return {
-    gx: (px - edge) / boardStep(game.boardWidth, edge),
-    gy: (py - edge) / boardStep(game.boardHeight, edge)
+    gameId: game.id,
+    index,
+    team: seat.team,
+    playMoves: game.playMoves ?? 0
   };
 }
-function boardGridHtml(game, showCoordinates2 = true) {
-  const letters = "ABCDEFGHJKLMNOPQRSTUVWXYZ";
-  const edge = boardEdge(showCoordinates2, game.boardWidth, game.boardHeight);
-  const stepX = boardStep(game.boardWidth, edge);
-  const stepY = boardStep(game.boardHeight, edge);
-  const lines = [];
-  for (let y = 0; y < game.boardHeight; y++) {
-    for (let x = 0; x < game.boardWidth; x++) {
-      if (!isPlayableIntersection(game, x, y)) continue;
-      const left = edge + x * stepX;
-      const top = edge + y * stepY;
-      if (isPlayableIntersection(game, x + 1, y)) {
-        lines.push(`<i class="board-line board-line-h" style="left:${left}%;top:${top}%;inline-size:${stepX}%"></i>`);
-      }
-      if (isPlayableIntersection(game, x, y + 1)) {
-        lines.push(`<i class="board-line board-line-v" style="left:${left}%;top:${top}%;block-size:${stepY}%"></i>`);
-      }
-    }
-  }
-  if (!showCoordinates2) return lines.join("");
-  const horizontalCoords = Array.from({
-    length: game.boardWidth
-  }, (_, x) => {
-    if (!Array.from({
-      length: game.boardHeight
-    }, (_2, y) => isPlayableIntersection(game, x, y)).some(Boolean)) return "";
-    const left = edge + x * stepX;
-    const label = letters[x] ?? x + 1;
-    return `<span class="coord coord-top" style="left:${left}%">${label}</span><span class="coord coord-bottom" style="left:${left}%">${label}</span>`;
-  }).join("");
-  const verticalCoords = Array.from({
-    length: game.boardHeight
-  }, (_, y) => {
-    if (!Array.from({
-      length: game.boardWidth
-    }, (_2, x) => isPlayableIntersection(game, x, y)).some(Boolean)) return "";
-    const top = edge + y * stepY;
-    const label = game.boardHeight - y;
-    return `<span class="coord coord-left" style="top:${top}%">${label}</span><span class="coord coord-right" style="top:${top}%">${label}</span>`;
-  }).join("");
-  return `${lines.join("")}${horizontalCoords}${verticalCoords}`;
+function isPendingSettled(pending, game) {
+  if (String(pending.gameId) !== String(game.id)) return true;
+  return (game.playMoves ?? 0) > pending.playMoves || game.board[pending.index] !== 0 || game.phase !== "play";
 }
-function starPointsHtml(game, showCoordinates2 = true) {
-  const coords = starPointCoords(game).filter(({ x, y }) => isPlayableIntersection(game, x, y));
-  const edge = boardEdge(showCoordinates2, game.boardWidth, game.boardHeight);
-  return coords.map(({ x, y }) => {
-    const left = edge + x * boardStep(game.boardWidth, edge);
-    const top = edge + y * boardStep(game.boardHeight, edge);
-    return `<i class="star-point" style="left:${left}%;top:${top}%"></i>`;
-  }).join("");
+
+// client/game/board-size-warning.ts
+var PHONE_QUERY = "(max-width: 759px)";
+function shouldWarnAboutBoardSize(game, isPhone = matchMedia(PHONE_QUERY).matches) {
+  if (!isPhone) return false;
+  const frame = boardFrame(game, false);
+  return exceedsPhoneFriendlySize(frame.columns, frame.rows);
+}
+function confirmJoinOnPhone(game) {
+  if (!shouldWarnAboutBoardSize(game)) return Promise.resolve(true);
+  const frame = boardFrame(game, false);
+  return new Promise((resolve) => {
+    const dialog = document.createElement("dialog");
+    dialog.className = "ui-dialog board-size-dialog";
+    dialog.innerHTML = `
+      <h3>Large board</h3>
+      <p>This board is ${frame.columns}\xD7${frame.rows}, larger than 19\xD719. On a phone the stones
+        will be small and may be hard to tap.</p>
+      <div class="board-size-dialog__actions">
+        <button type="button" data-choice="cancel">Cancel</button>
+        <button type="button" data-choice="join">Join anyway</button>
+      </div>
+    `;
+    let joined = false;
+    dialog.addEventListener("click", (event) => {
+      const choice = event.target?.closest("[data-choice]")?.dataset.choice;
+      if (!choice) return;
+      joined = choice === "join";
+      dialog.close();
+    });
+    dialog.addEventListener("close", () => {
+      dialog.remove();
+      resolve(joined);
+    });
+    document.body.append(dialog);
+    dialog.showModal();
+  });
 }
 
 // client/game/joseki-placement.ts
@@ -3376,6 +3779,7 @@ function bindShapeCards(options) {
     const board = panel2.querySelector(".board");
     const team = placementPreviewTeam(game);
     board?.setAttribute("data-preview-team", String(team));
+    board?.setAttribute("data-preview-tone", stoneTone(stoneColor(game, team)));
     board?.style.setProperty("--preview-color", stoneColor(game, team));
     bindShapeCards(options);
     const card = fullModeShapeCard(game);
@@ -3529,18 +3933,15 @@ function bindHistoryButtons({ panel: panel2, game, historyIndex, latestHistoryIn
     button.addEventListener("click", () => navigateGameHistory2(game, historyIndex, latestHistoryIndex, button.dataset.history ?? "latest"));
   }
 }
-function bindSeats({ panel: panel2, game, statusElement: statusElement2, renderGameList: renderGameList3, showGame: showGame2 }) {
+function bindSeats({ panel: panel2, game, statusElement: statusElement2, showGame: showGame2 }) {
   for (const button of panel2.querySelectorAll(".seat[data-open='true'], .team-seat-player[data-open='true']")) {
     const handleJoinSeat = async (event) => {
       if (event.target?.closest(".seat-action")) return;
       const seatId = button.dataset.seatId;
-      if (!seatId) return;
+      if (!seatId || !await confirmJoinOnPhone(game)) return;
       const response = await joinSeat(game.id, seatId);
       if (!response.ok) return;
-      await Promise.all([
-        renderGameList3(),
-        showGame2(game.id)
-      ]);
+      await showGame2(game.id);
     };
     button.addEventListener("click", handleJoinSeat);
     button.addEventListener("keydown", async (event) => {
@@ -3555,13 +3956,10 @@ function bindSeats({ panel: panel2, game, statusElement: statusElement2, renderG
       event.stopPropagation();
       const seatId = button.dataset.seatId;
       if (button.dataset.action === "join") {
-        if (!seatId) return;
+        if (!seatId || !await confirmJoinOnPhone(game)) return;
         const response = await joinSeat(game.id, seatId);
         if (!response.ok) return;
-        await Promise.all([
-          renderGameList3(),
-          showGame2(game.id)
-        ]);
+        await showGame2(game.id);
         return;
       }
       if (button.dataset.action === "invite") {
@@ -3570,10 +3968,7 @@ function bindSeats({ panel: panel2, game, statusElement: statusElement2, renderG
       }
       if (!seatId) return;
       await leaveSeat(game.id, seatId);
-      await Promise.all([
-        renderGameList3(),
-        showGame2(game.id)
-      ]);
+      await showGame2(game.id);
     });
   }
 }
@@ -3597,7 +3992,7 @@ function teamColorPlayerListsHtml(game) {
     const players = game.seats.filter((seat) => seat.team === team && seat.playerUuid).map((seat) => `<div class="user-row">${escapeHtml(seat.publicName ?? short(seat.playerUuid))}</div>`).join("") || `<p class="muted-text">None</p>`;
     return `
       <div class="team-users" data-team="${team}">
-        <h4><i class="color-dot" data-team="${team}" style="--stone-color: ${stoneColor(game, team)}"></i>${escapeHtml(teamColorName(game, team))}</h4>
+        <h4>${colorDotHtml(game, team)}${escapeHtml(teamColorName(game, team))}</h4>
         <div class="team-users__players">${players}</div>
       </div>
     `;
@@ -3653,7 +4048,7 @@ function teamSeatRowHtml(game, seat, index, session2) {
   return `
     <div class="team-seat-player" data-seat-id="${seat.id}" data-open="${open}" ${open ? 'role="button" tabindex="0"' : 'aria-disabled="true"'}>
       <i class="turn-marker">${active}</i>
-      <i class="color-dot" data-team="${seat.team}" style="--stone-color: ${stoneColor(game, seat.team)}"></i>
+      ${colorDotHtml(game, seat.team)}
       <span class="team-seat-player__name">${player}</span>
       ${seatActionHtml(seat, session2)}
     </div>
@@ -3666,7 +4061,7 @@ function playerSeatHtml(game, seat, index, session2) {
   const open = !seat.playerUuid;
   return `
     <div class="seat" data-seat-id="${seat.id}" data-open="${open}" ${open ? 'role="button" tabindex="0"' : 'aria-disabled="true"'}>
-      <div class="seat-player"><i class="turn-marker">${active}</i>${activeStoneHtml(game, index)}<i class="color-dot" data-team="${seatDisplayTeam(game, seat)}" style="--stone-color: ${stoneColor(game, seat.team)}"></i>${player}</div>
+      <div class="seat-player"><i class="turn-marker">${active}</i>${activeStoneHtml(game, index)}${colorDotHtml(game, seat.team, seatDisplayTeam(game, seat))}${player}</div>
       ${action}
       <div class="seat-time">${seatMetaHtml(game, seat)}</div>
       <div class="seat-points">${formatSeatPoints(displaySeatPoints(game, seat))} pts</div>
@@ -3689,10 +4084,10 @@ function formatSeatPoints(points) {
 }
 
 // client/game/territory.ts
-function territoryShadeHtml(game, boardColors, edge) {
+function territoryShadeHtml(game, boardColors, frame) {
   if (game.phase !== "scoring" && game.phase !== "done") return "";
   return territoryShadeIndexes(game, boardColors).map(({ index, team }) => {
-    const point = pointPosition(game, index, edge);
+    const point = pointPosition(game, index, frame);
     return `<i class="territory-shade" aria-hidden="true" style="left: ${point.left}%; top: ${point.top}%; --territory-color: ${stoneColor(game, team)}"></i>`;
   }).join("");
 }
@@ -3738,7 +4133,7 @@ function territoryShadeIndexes(game, boardColors) {
 // client/game/render.ts
 function gameViewHtml(context) {
   const { game, session: session2, boardColors, boardOpacity, canNavigateHistory, visualHistoryIndex, playableHistoryIndex, playableHistoryCount, viewingHistory, passOrDoneDisabled, canUsePlayActions, canUndo, canResign, showCoordinates: showCoordinates2, historyEntry } = context;
-  const edge = boardEdge(showCoordinates2, game.boardWidth, game.boardHeight);
+  const frame = boardFrame(game, showCoordinates2);
   const overlay = josekiPlacementOverlay(game, boardColors, boardOpacity);
   const result = resultText(game);
   const shapeCardInProgress = Boolean(game.shapeCards?.active);
@@ -3759,11 +4154,12 @@ function gameViewHtml(context) {
     </dialog>
     <div class="game-view ${game.shapeCards ? "has-shape-hand" : ""}">
       <section class="board-panel" aria-label="Board">
-        <div class="board ${result ? "has-result" : ""}" data-preview-team="${placementPreviewTeam(game)}" data-coordinates="${showCoordinates2}" style="--board-step: ${boardStep(game.boardWidth, edge)}%; --preview-color: ${stoneColor(game, placementPreviewTeam(game))}">
-          ${boardGridHtml(game, showCoordinates2)}
-          ${starPointsHtml(game, showCoordinates2)}
-          ${territoryShadeHtml(game, overlay.colors, edge)}
-          ${boardPointsHtml(game, overlay.colors, overlay.opacity, edge)}
+        <div class="board ${result ? "has-result" : ""} ${game.board.includes(-1) ? "has-water" : ""}" data-preview-team="${placementPreviewTeam(game)}" data-preview-tone="${stoneTone(stoneColor(game, placementPreviewTeam(game)))}" data-coordinates="${showCoordinates2}" style="--board-step: ${frame.stepX}%; --board-aspect: ${frame.aspectRatio}; --preview-color: ${stoneColor(game, placementPreviewTeam(game))}">
+          ${boardLandHtml(game, frame)}
+          ${boardGridHtml(game, showCoordinates2, frame)}
+          ${starPointsHtml(game, showCoordinates2, frame)}
+          ${territoryShadeHtml(game, overlay.colors, frame)}
+          ${boardPointsHtml(game, overlay.colors, overlay.opacity, frame, lastMoveIndexes(game, viewingHistory, historyEntry))}
           ${result ? `<div class="game-result-overlay" aria-live="polite">${escapeHtml(result)}</div>` : ""}
         </div>
       </section>
@@ -3871,13 +4267,27 @@ function josekiSetupHtml(game, session2) {
     </div>
   `;
 }
-function boardPointsHtml(game, boardColors, boardOpacity, edge) {
+function boardPointsHtml(game, boardColors, boardOpacity, frame, lastMove) {
   return boardColors.map((color, index) => {
-    const point = pointPosition(game, index, edge);
+    const point = pointPosition(game, index, frame);
     const opacity = boardOpacity?.[index] ?? 1;
     const renderColor = color === 99 ? 3 : color;
-    return `<button class="point ${game.deadStones?.[index] ? "is-dead" : ""} ${game.noScorePoints?.[index] ? "is-no-score" : ""}" aria-label="${pointLabel(game, index)}" data-index="${index}" data-color="${renderColor}" ${color === -1 ? "disabled" : ""} style="left: ${point.left}%; top: ${point.top}%; --stone-color: ${stoneColor(game, color)}; --stone-opacity: ${opacity}"></button>`;
+    const hex = stoneColor(game, color);
+    const isStone = color > 0 && color !== 99;
+    const classes = [
+      "point",
+      game.deadStones?.[index] ? "is-dead" : "",
+      game.noScorePoints?.[index] ? "is-no-score" : "",
+      isStone && stoneTone(hex) === "light" ? "is-light-stone" : "",
+      isStone && lastMove.has(index) ? "is-last-move" : ""
+    ].filter(Boolean).join(" ");
+    const dot = isStone && lastMove.has(index) ? `; --last-move-dot: ${lastMoveDotColor(hex)}` : "";
+    return `<button class="${classes}" aria-label="${pointLabel(game, index)}" data-index="${index}" data-color="${renderColor}" ${color === -1 ? "disabled" : ""} style="left: ${point.left}%; top: ${point.top}%; --stone-color: ${hex}; --stone-opacity: ${opacity}${dot}"></button>`;
   }).join("");
+}
+function lastMoveIndexes(game, viewingHistory, historyEntry) {
+  const points = viewingHistory ? historyEntry?.lastStone : game.lastStone;
+  return new Set((points ?? []).map((point) => point.y * game.boardWidth + point.x));
 }
 
 // client/ui/layout.ts
@@ -3941,8 +4351,12 @@ function startGameListRefresh(currentEvents, setEvents, render, restart) {
     setEvents(void 0);
     setTimeout(restart, 1e3);
   });
-  addEventListener("focus", () => render());
+  if (!focusRefreshRegistered) {
+    focusRefreshRegistered = true;
+    addEventListener("focus", () => render());
+  }
 }
+var focusRefreshRegistered = false;
 function gameListItemHtml(game) {
   const label = game.config?.name || `Game #${game.id}`;
   return `<a class="game-list-item" href="/game/${game.id}" data-game-id="${game.id}">${escapeHtml(label)}</a>`;
@@ -4043,6 +4457,10 @@ async function maybeJoinHashSeat(game, renderGame2, showGame2) {
   if (!seatId) return;
   const seat = game.seats.find((candidate) => candidate.id === seatId);
   if (!seat || seat.playerUuid) return;
+  if (!await confirmJoinOnPhone(game)) {
+    history.replaceState(null, "", `/game/${game.id}`);
+    return;
+  }
   const response = await joinSeat(game.id, seatId);
   if (!response.ok) return;
   history.replaceState(null, "", `/game/${game.id}`);
@@ -4052,21 +4470,42 @@ async function maybeJoinHashSeat(game, renderGame2, showGame2) {
 }
 
 // client/game/realtime.ts
-function connectGameSocket(gameId, socketState2, renderGame2, renderGameList3, reconnect) {
+function mergeGameUpdate(previous, update) {
+  const { historyFrom, history: history2, ...game } = update;
+  return {
+    ...game,
+    config: previous.config,
+    history: (previous.history ?? []).slice(0, historyFrom).concat(history2)
+  };
+}
+function connectGameSocket(gameId, socketState2, renderGame2, reconnect, onActionError = () => {
+}) {
   if (socketState2.gameId === gameId && socketState2.socket?.readyState === WebSocket.OPEN) return;
   socketState2.socket?.close();
   socketState2.gameId = gameId;
   const protocol = location.protocol === "https:" ? "wss" : "ws";
   const socket = new WebSocket(`${protocol}://${location.host}/api/games/${gameId}/ws`);
   socketState2.socket = socket;
-  socket.addEventListener("message", async (event) => {
+  let lastGame;
+  socket.addEventListener("message", (event) => {
+    if (socketState2.socket !== socket) return;
     const message = JSON.parse(String(event.data));
     if (message.type === "snapshot" && message.game) {
-      renderGame2(message.game);
-      await renderGameList3();
+      lastGame = message.game;
+      renderGame2(lastGame);
+    } else if (message.type === "update" && message.game && lastGame) {
+      lastGame = mergeGameUpdate(lastGame, message.game);
+      renderGame2(lastGame);
+    } else if (message.type === "presence" && message.users && lastGame) {
+      lastGame = {
+        ...lastGame,
+        users: message.users
+      };
+      renderGame2(lastGame);
     } else if (message.type === "action_error" && message.error) {
       const status = document.querySelector("#status");
       if (status) status.textContent = message.error;
+      onActionError(message.error);
     }
   });
   socket.addEventListener("close", () => {
@@ -4120,6 +4559,90 @@ function effectiveTheme(theme) {
 }
 function isThemePreference(value) {
   return value === "system" || value === "light" || value === "dark";
+}
+
+// client/game/magnet-animation.ts
+function magnetSlides(previous, next, viewingHistory) {
+  if (!previous || String(previous.id) !== String(next.id) || viewingHistory) return [];
+  if ((next.playMoves ?? 0) <= (previous.playMoves ?? 0)) return [];
+  return slidesOf(next, next);
+}
+function reviewMagnetSlides(game, entry) {
+  return entry?.board ? slidesOf({
+    ...entry,
+    board: entry.board
+  }, game) : [];
+}
+function slidesOf(position, game) {
+  const width = game.boardWidth;
+  const placed = position.lastStone?.[0];
+  const placedColor = placed ? position.board[placed.y * width + placed.x] : void 0;
+  return (position.magnetMoves ?? []).flatMap(({ from, to }) => {
+    const toIndex = to.y * width + to.x;
+    const color = position.board[toIndex];
+    if (!color || color < 0) return [];
+    return [
+      {
+        from: from.y * width + from.x,
+        to: toIndex,
+        distance: Math.abs(from.x - to.x) + Math.abs(from.y - to.y),
+        attracted: color !== placedColor
+      }
+    ];
+  });
+}
+function animateMagnetSlides(root, slides) {
+  if (slides.length === 0) return;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  for (const slide of slides) {
+    const stone = root.querySelector(`.point[data-index="${slide.to}"]`);
+    const origin = root.querySelector(`.point[data-index="${slide.from}"]`);
+    if (!stone || !origin || typeof stone.animate !== "function") continue;
+    const end = stone.getBoundingClientRect();
+    const start = origin.getBoundingClientRect();
+    const dx = start.left - end.left;
+    const dy = start.top - end.top;
+    stone.animate([
+      {
+        translate: `${dx}px ${dy}px`
+      },
+      {
+        translate: "0px 0px"
+      }
+    ], {
+      duration: Math.min(450, 140 + slide.distance * 45),
+      easing: slide.attracted ? "cubic-bezier(0.5, 0, 0.9, 0.6)" : "cubic-bezier(0.1, 0.6, 0.3, 1)"
+    });
+  }
+}
+
+// client/game/last-move-marker.ts
+var LAST_MOVE_MARKERS = [
+  "slice",
+  "circle",
+  "ring",
+  "square",
+  "triangle"
+];
+var STORAGE_KEY = "baduk:last-move-marker";
+function parseLastMoveMarker(value) {
+  return LAST_MOVE_MARKERS.find((marker) => marker === value) ?? "slice";
+}
+function readLastMoveMarker() {
+  try {
+    return parseLastMoveMarker(localStorage.getItem(STORAGE_KEY));
+  } catch {
+    return "slice";
+  }
+}
+function saveLastMoveMarker(marker) {
+  try {
+    localStorage.setItem(STORAGE_KEY, marker);
+  } catch {
+  }
+}
+function applyLastMoveMarker(marker, root = document.documentElement) {
+  root.dataset.lastMoveMarker = marker;
 }
 
 // client/game/countdown.ts
@@ -4188,6 +4711,169 @@ function timeoutCue(game, remaining) {
   };
 }
 
+// client/game/sound.ts
+function moveSoundFor(previous, next) {
+  if (!previous || previous.id !== next.id) return void 0;
+  const previousLength = previous.history?.length ?? 0;
+  const nextLength = next.history?.length ?? 0;
+  if (nextLength > previousLength && next.history?.at(-1)?.action === "pass") return "pass";
+  if ((next.captureCount ?? 0) > (previous.captureCount ?? 0)) return "capture";
+  if ((next.playMoves ?? 0) > (previous.playMoves ?? 0)) return "stone";
+  return void 0;
+}
+function clampVolume(value, fallback = 0.5) {
+  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
+}
+var SoundPlayer = class {
+  context;
+  contextCreated = false;
+  gains = /* @__PURE__ */ new Map();
+  volumes = /* @__PURE__ */ new Map();
+  buffers = /* @__PURE__ */ new Map();
+  active = /* @__PURE__ */ new Map();
+  elements = /* @__PURE__ */ new Map();
+  createContext;
+  fetchAudio;
+  createElement;
+  constructor(options = {}) {
+    this.createContext = options.createContext ?? defaultContext;
+    this.fetchAudio = options.fetchAudio ?? defaultFetchAudio;
+    this.createElement = options.createElement ?? ((src) => new Audio(src));
+  }
+  setVolume(group, volume) {
+    const safe = clampVolume(volume);
+    this.volumes.set(group, safe);
+    const gain = this.gains.get(group);
+    if (gain) gain.gain.value = safe;
+  }
+  volume(group) {
+    return this.volumes.get(group) ?? 0.5;
+  }
+  /** Starts loading files ahead of time so the first play isn't delayed. */
+  preload(sources) {
+    for (const src of sources) void this.buffer(src);
+  }
+  play(src, group) {
+    const context = this.audioContext();
+    if (!context) {
+      this.playElement(src, group);
+      return;
+    }
+    void this.buffer(src).then((buffer) => {
+      if (!buffer) return;
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(this.gain(context, group));
+      const playing = this.activeSources(group);
+      playing.add(source);
+      source.addEventListener("ended", () => playing.delete(source));
+      source.start();
+    });
+  }
+  stop(group) {
+    for (const source of this.activeSources(group)) {
+      try {
+        source.stop();
+      } catch {
+      }
+    }
+    this.activeSources(group).clear();
+    for (const [key, element] of this.elements) {
+      if (!key.startsWith(`${group}:`)) continue;
+      element.pause();
+      element.currentTime = 0;
+    }
+  }
+  /**
+   * Browsers keep audio suspended until the user interacts with the page; resume on the first
+   * gesture and stop listening once audio is running.
+   */
+  unlockOn(target) {
+    const events = [
+      "pointerdown",
+      "keydown",
+      "touchend"
+    ];
+    const unlock = () => {
+      const context = this.audioContext();
+      if (!context) return remove();
+      if (context.state === "running") return remove();
+      void context.resume().then(() => {
+        if (context.state === "running") remove();
+      }).catch(() => {
+      });
+    };
+    const remove = () => {
+      for (const type of events) target.removeEventListener(type, unlock);
+    };
+    for (const type of events) target.addEventListener(type, unlock);
+  }
+  audioContext() {
+    if (!this.contextCreated) {
+      this.contextCreated = true;
+      try {
+        this.context = this.createContext();
+      } catch {
+        this.context = void 0;
+      }
+    }
+    return this.context;
+  }
+  gain(context, group) {
+    let gain = this.gains.get(group);
+    if (!gain) {
+      gain = context.createGain();
+      gain.gain.value = this.volume(group);
+      gain.connect(context.destination);
+      this.gains.set(group, gain);
+    }
+    return gain;
+  }
+  buffer(src) {
+    let buffer = this.buffers.get(src);
+    if (!buffer) {
+      const context = this.audioContext();
+      buffer = context ? this.fetchAudio(src).then((data) => context.decodeAudioData(data)).catch(() => {
+        this.buffers.delete(src);
+        return void 0;
+      }) : Promise.resolve(void 0);
+      this.buffers.set(src, buffer);
+    }
+    return buffer;
+  }
+  activeSources(group) {
+    let sources = this.active.get(group);
+    if (!sources) {
+      sources = /* @__PURE__ */ new Set();
+      this.active.set(group, sources);
+    }
+    return sources;
+  }
+  /** Fallback for browsers without Web Audio: the previous <audio> element behaviour. */
+  playElement(src, group) {
+    const key = `${group}:${src}`;
+    let element = this.elements.get(key);
+    if (!element) {
+      element = this.createElement(src);
+      element.preload = "auto";
+      this.elements.set(key, element);
+    }
+    element.volume = this.volume(group);
+    element.currentTime = 0;
+    void element.play().catch(() => {
+    });
+  }
+};
+function defaultContext() {
+  const Context = globalThis.AudioContext ?? globalThis.webkitAudioContext;
+  return Context ? new Context() : void 0;
+}
+async function defaultFetchAudio(src) {
+  const response = await fetch(src);
+  if (!response.ok) throw new Error(`audio ${src}: ${response.status}`);
+  return await response.arrayBuffer();
+}
+
 // client/ui/dialog.ts
 function installDialogLightDismiss(root = document) {
   let pressedBackdrop;
@@ -4226,17 +4912,24 @@ var voiceVolume = document.querySelector("#voice-volume");
 var countdownSound = document.querySelector("#countdown-sound");
 var appRemake = document.querySelector("#app-remake");
 var appHelp = document.querySelector("#app-help");
-var stoneSound = createSound("/clack.mp3", readSavedStoneVolume());
-var captureSound = createSound("/capture.mp3", readSavedStoneVolume());
-var passSound = createSound("/pass.mp3", readSavedStoneVolume());
-var voiceCountdownSounds = {
-  english: createCountdownVoiceSounds("english"),
-  chinese: createCountdownVoiceSounds("chinese")
+var MOVE_SOUNDS = {
+  stone: "/clack.mp3",
+  capture: "/capture.mp3",
+  pass: "/pass.mp3"
 };
-var countdownBeep = createSound("/CountdownBeep.mp3", readSavedVoiceVolume());
-if (stoneVolume) stoneVolume.value = String(stoneSound.volume);
-if (voiceVolume) voiceVolume.value = String(countdownBeep.volume);
+var COUNTDOWN_BEEP = "/CountdownBeep.mp3";
+var sounds = new SoundPlayer();
+sounds.setVolume("stone", readSavedStoneVolume());
+sounds.setVolume("voice", readSavedVoiceVolume());
+sounds.unlockOn(document);
+sounds.preload([
+  ...Object.values(MOVE_SOUNDS),
+  COUNTDOWN_BEEP
+]);
+if (stoneVolume) stoneVolume.value = String(sounds.volume("stone"));
+if (voiceVolume) voiceVolume.value = String(sounds.volume("voice"));
 if (countdownSound) countdownSound.value = readSavedCountdownSound();
+preloadCountdownVoice(readSavedCountdownSound());
 var createGamePanelHtml = panel.innerHTML;
 var session;
 var socketState = {};
@@ -4253,13 +4946,26 @@ if (!showCoordinates && matchMedia("(max-width: 759px)").matches) {
   localStorage.setItem("baduk:show-coordinates", "false");
 }
 var historyViewByGame = /* @__PURE__ */ new Map();
+var historyBoards;
+var historyBoardsLoading = false;
+var pendingMove;
+var shownPosition;
+var pendingMoveTimer;
+var PENDING_MOVE_TIMEOUT_MS = 3e3;
 applySavedTheme();
+keepGridLinesCrisp();
 updateThemeToggle(themeToggle);
 updateCoordinateToggle();
 updateStoneShadowToggle();
 installDialogLightDismiss();
 var landingHelpBody = document.querySelector("[data-landing-help-body]");
 if (landingHelpBody) landingHelpBody.innerHTML = allVariantRulesHelpHtml();
+landingHelpBody?.addEventListener("toggle", (event) => {
+  const entry = event.target;
+  if (entry.open) entry.scrollIntoView({
+    block: "nearest"
+  });
+}, true);
 appRemake?.addEventListener("click", remakeCurrentGame);
 appHelp?.addEventListener("click", () => {
   const dialog = document.querySelector(".game-info-dialog") ?? document.querySelector(".landing-help-dialog");
@@ -4284,16 +4990,18 @@ soundToggle?.addEventListener("click", (event) => {
 });
 soundControl?.addEventListener("click", (event) => event.stopPropagation());
 bindKatachiControlsPopover();
+bindLastMoveMarkerPopover();
 stoneVolume?.addEventListener("input", () => {
-  setStoneVolume(Number(stoneVolume.value));
+  sounds.setVolume("stone", Number(stoneVolume.value));
   localStorage.setItem("baduk:stone-volume", stoneVolume.value);
 });
 voiceVolume?.addEventListener("input", () => {
-  setVoiceVolume(Number(voiceVolume.value));
+  sounds.setVolume("voice", Number(voiceVolume.value));
   localStorage.setItem("baduk:voice-volume", voiceVolume.value);
 });
 countdownSound?.addEventListener("change", () => {
   localStorage.setItem("baduk:countdown-sound", readCountdownSoundSelection());
+  preloadCountdownVoice(readCountdownSoundSelection());
   lastCountdownCueKey = void 0;
   stopCountdownAudio();
   if (currentGame) maybePlayCountdown(currentGame);
@@ -4310,6 +5018,7 @@ async function boot() {
     startGameListRefresh2();
     const gameId = location.pathname.match(/^\/game\/([^/]+)/)?.[1];
     if (gameId) await showGame(gameId);
+    else showTryPlaying();
   } catch (_error) {
     statusElement.textContent = "Server unavailable. Try refreshing.";
   }
@@ -4361,7 +5070,6 @@ async function saveNameNow() {
   session = await readSession(response);
   nameInput.value = session.name ?? "";
   lastSavedName = nameInput.value;
-  await renderGameList2();
   const gameId = location.pathname.match(/^\/game\/([^/]+)/)?.[1];
   if (gameId) await showGame(gameId);
 }
@@ -4411,6 +5119,7 @@ function showCreateScreen(push = true) {
   shell.classList.remove("game-layout", "desktop-fit");
   panel.innerHTML = createGameTemplate();
   bindCreateGameForm2();
+  showTryPlaying();
   if (push && location.pathname !== "/") history.pushState(null, "", "/");
 }
 function createGameTemplate() {
@@ -4427,17 +5136,23 @@ async function showGame(gameId) {
     return;
   }
   const game = await readGame(response);
+  removeTryPlaying();
   connectGameSocket2(game.id);
   renderGame(game);
   await maybeJoinHashSeat(game, renderGame, showGame);
 }
 function renderGame(game) {
-  game = applyLocalName(game);
-  const helpWasOpen = document.querySelector(".game-info-dialog")?.open ?? false;
+  const previousGame = currentGame;
+  historyBoards = reconcileHistoryBoards(historyBoards, game);
+  game = withHistoryBoards(applyLocalName(game), historyBoards);
+  const helpDialog = document.querySelector(".game-info-dialog");
+  const helpWasOpen = helpDialog?.open ?? false;
+  const helpScrollTop = helpDialog?.querySelector(".dialog-scroll")?.scrollTop ?? 0;
   const josekiSelectionDialog = document.querySelector("[data-joseki-selection-dialog]");
   const josekiSelectionWasOpen = josekiSelectionDialog?.open ?? false;
   const josekiSelectionScrollTop = josekiSelectionDialog?.querySelector(".dialog-scroll")?.scrollTop ?? 0;
-  maybePlayStoneSound(currentGame, game);
+  const confirmedPendingMove = settlePendingMove(game);
+  maybePlayStoneSound(currentGame, game, confirmedPendingMove);
   if (game.phase !== "play") {
     stopCountdownAudio();
     lastCountdownCueKey = void 0;
@@ -4451,6 +5166,9 @@ function renderGame(game) {
   shell.classList.add("game-layout");
   updateGameLayoutMode(shell);
   const { rawHistory, latestHistoryIndex, historyIndex, viewingHistory, boardColors, boardOpacity, visualHistoryIndex, playableHistoryCount, playableHistoryIndex, canNavigateHistory, canUsePlayActions, canUndo, canResign, passOrDoneDisabled } = gameHistoryView(game, session, historyViewByGame);
+  if (viewingHistory && !rawHistory[historyIndex]?.board) {
+    void loadHistoryBoards(game, historyIndex);
+  }
   const displayGame = viewingHistory ? {
     ...game,
     phase: "play",
@@ -4485,16 +5203,22 @@ function renderGame(game) {
     historyKeyController,
     statusElement,
     sendAction,
-    renderGameList: renderGameList2,
     showGame,
     navigateGameHistory,
     canNavigateGameHistory: canNavigateGameHistory2,
     showCoordinates,
     toggleCoordinates
   });
+  showPendingStone();
+  animateMagnetSlides(panel, positionMagnetSlides(previousGame, game, historyIndex, viewingHistory));
   const activeSeat = game.seats[game.turn];
   statusElement.textContent = game.phase === "done" && game.winnerTeams?.length ? `done \xB7 winner: ${winnerText(game)}` : `${game.phase} \xB7 turn: ${activeSeat?.id ?? "none"}`;
-  if (helpWasOpen) panel.querySelector(".game-info-dialog")?.showModal();
+  if (helpWasOpen) {
+    const nextHelpDialog = panel.querySelector(".game-info-dialog");
+    nextHelpDialog?.showModal();
+    const scroller = nextHelpDialog?.querySelector(".dialog-scroll");
+    if (scroller) scroller.scrollTop = helpScrollTop;
+  }
   const nextJosekiSelectionDialog = panel.querySelector("[data-joseki-selection-dialog]");
   if (josekiSelectionWasOpen && nextJosekiSelectionDialog) {
     if (!nextJosekiSelectionDialog.open) nextJosekiSelectionDialog.showModal();
@@ -4505,37 +5229,6 @@ function renderGame(game) {
     gameClockTimer = setTimeout(() => updateGameClock(game), 1e3);
   }
 }
-function createSound(src, volume) {
-  const sound = new Audio(src);
-  sound.preload = "auto";
-  sound.volume = volume;
-  return sound;
-}
-function createCountdownVoiceSounds(voice) {
-  return Array.from({
-    length: 10
-  }, (_, index) => {
-    const src = countdownAudioPath(voice, index + 1);
-    if (!src) throw new Error(`Missing ${voice} countdown audio path`);
-    return createSound(src, readSavedVoiceVolume());
-  });
-}
-function setStoneVolume(volume) {
-  const safeVolume = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.5;
-  for (const sound of [
-    stoneSound,
-    captureSound,
-    passSound
-  ]) sound.volume = safeVolume;
-}
-function setVoiceVolume(volume) {
-  const safeVolume = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.5;
-  for (const sound of [
-    ...voiceCountdownSounds.english,
-    ...voiceCountdownSounds.chinese,
-    countdownBeep
-  ]) sound.volume = safeVolume;
-}
 function readSavedStoneVolume() {
   return readSavedVolume("baduk:stone-volume");
 }
@@ -4543,8 +5236,7 @@ function readSavedVoiceVolume() {
   return readSavedVolume("baduk:voice-volume");
 }
 function readSavedVolume(key) {
-  const saved = Number(localStorage.getItem(key) ?? localStorage.getItem("baduk:sound-volume") ?? "0.5");
-  return Number.isFinite(saved) ? Math.min(1, Math.max(0, saved)) : 0.5;
+  return clampVolume(Number(localStorage.getItem(key) ?? localStorage.getItem("baduk:sound-volume") ?? "0.5"));
 }
 function readSavedCountdownSound() {
   return parseCountdownSound(localStorage.getItem("baduk:countdown-sound"));
@@ -4600,6 +5292,31 @@ function bindKatachiControlsPopover() {
     input.addEventListener("focus", () => input.select());
   }
 }
+function bindLastMoveMarkerPopover() {
+  applyLastMoveMarker(readLastMoveMarker());
+  const control = document.querySelector("#marker-control");
+  const toggle = document.querySelector("#marker-toggle");
+  const popover = document.querySelector("#marker-popover");
+  const select = document.querySelector("#last-move-marker");
+  if (!control || !toggle || !popover || !select) return;
+  select.value = readLastMoveMarker();
+  toggle.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const open = popover.hidden;
+    popover.hidden = !open;
+    toggle.setAttribute("aria-expanded", String(open));
+  });
+  control.addEventListener("click", (event) => event.stopPropagation());
+  document.addEventListener("click", () => {
+    popover.hidden = true;
+    toggle.setAttribute("aria-expanded", "false");
+  });
+  select.addEventListener("change", () => {
+    const marker = parseLastMoveMarker(select.value);
+    saveLastMoveMarker(marker);
+    applyLastMoveMarker(marker);
+  });
+}
 function toggleSoundPopover() {
   if (!soundPopover || !soundToggle) return;
   const open = soundPopover.hidden;
@@ -4611,20 +5328,10 @@ function closeSoundPopover() {
   soundPopover.hidden = true;
   soundToggle.setAttribute("aria-expanded", "false");
 }
-function maybePlayStoneSound(previous, next) {
-  if (!previous || previous.id !== next.id) return;
-  const nextAction = next.history?.at(-1)?.action;
-  const previousHistoryLength = previous.history?.length ?? 0;
-  const nextHistoryLength = next.history?.length ?? 0;
-  if (nextHistoryLength > previousHistoryLength && nextAction === "pass") {
-    playSound(passSound);
-    return;
-  }
-  if ((next.captureCount ?? 0) > (previous.captureCount ?? 0)) {
-    playSound(captureSound);
-    return;
-  }
-  if ((next.playMoves ?? 0) > (previous.playMoves ?? 0)) playSound(stoneSound);
+function maybePlayStoneSound(previous, next, alreadyPlayed = false) {
+  const sound = moveSoundFor(previous, next);
+  if (sound === "stone" && alreadyPlayed) return;
+  if (sound) sounds.play(MOVE_SOUNDS[sound], "stone");
 }
 function maybePlayCountdown(game) {
   const selectedSound = readCountdownSoundSelection();
@@ -4632,28 +5339,19 @@ function maybePlayCountdown(game) {
   const cue = countdownCue(game);
   if (!cue || cue.key === lastCountdownCueKey) return;
   lastCountdownCueKey = cue.key;
-  if (selectedSound === "beep" || cue.seconds === 0) {
-    playCountdownSound(countdownBeep);
-    return;
-  }
-  const audio = voiceCountdownSounds[selectedSound][cue.seconds - 1];
-  if (!audio) return;
-  playCountdownSound(audio);
-}
-function playCountdownSound(audio) {
+  const src = selectedSound === "beep" || cue.seconds === 0 ? COUNTDOWN_BEEP : countdownAudioPath(selectedSound, cue.seconds);
+  if (!src) return;
   stopCountdownAudio();
-  playSound(audio);
+  sounds.play(src, "voice");
 }
 function stopCountdownAudio() {
-  const countdownSounds = [
-    ...voiceCountdownSounds.english,
-    ...voiceCountdownSounds.chinese,
-    countdownBeep
-  ];
-  for (const audio of countdownSounds) {
-    audio.pause();
-    audio.currentTime = 0;
-  }
+  sounds.stop("voice");
+}
+function preloadCountdownVoice(selected) {
+  if (selected !== "english" && selected !== "chinese") return;
+  sounds.preload(Array.from({
+    length: 10
+  }, (_, index) => countdownAudioPath(selected, index + 1)).filter((src) => Boolean(src)));
 }
 function updateGameClock(game) {
   if (currentGame !== game) return;
@@ -4678,13 +5376,43 @@ function updateGameClock(game) {
     gameClockTimer = setTimeout(() => updateGameClock(game), 1e3);
   }
 }
-function playSound(sound) {
-  sound.currentTime = 0;
-  void sound.play().catch(() => {
-  });
+function positionMagnetSlides(previous, game, historyIndex, reviewing) {
+  const entry = game.history?.[historyIndex];
+  if (reviewing && !entry?.board) return [];
+  const last = shownPosition;
+  shownPosition = {
+    gameId: game.id,
+    historyIndex,
+    reviewing
+  };
+  const navigated = last !== void 0 && String(last.gameId) === String(game.id) && last.historyIndex !== historyIndex && (last.reviewing || reviewing);
+  if (reviewing) return navigated ? reviewMagnetSlides(game, entry) : [];
+  if (navigated) {
+    return reviewMagnetSlides(game, {
+      board: game.board,
+      lastStone: game.lastStone,
+      magnetMoves: game.magnetMoves
+    });
+  }
+  return magnetSlides(previous, game, false);
+}
+async function loadHistoryBoards(game, index) {
+  const from = historyFetchStart(historyBoards, game, index);
+  if (from === void 0 || historyBoardsLoading) return;
+  historyBoardsLoading = true;
+  try {
+    const response = await getGameHistory(game.id, from);
+    if (!response.ok) return;
+    const { from: start, entries } = await readGameHistory(response);
+    if (!currentGame || String(currentGame.id) !== String(game.id)) return;
+    historyBoards = addHistoryBoards(historyBoards, currentGame, start, entries);
+    renderGame(currentGame);
+  } finally {
+    historyBoardsLoading = false;
+  }
 }
 function connectGameSocket2(gameId) {
-  connectGameSocket(gameId, socketState, renderGame, renderGameList2, connectGameSocket2);
+  connectGameSocket(gameId, socketState, renderGame, connectGameSocket2, cancelPendingMove);
 }
 async function remakeCurrentGame() {
   if (!currentGame) return;
@@ -4720,7 +5448,52 @@ function updateStoneShadowToggle() {
   stoneShadowToggle?.classList.toggle("is-confirmed", showStoneShadows);
 }
 async function sendAction(gameId, action) {
-  await sendGameAction(gameId, action, statusElement, renderGame, renderGameList2, socketState);
+  const pending = currentGame && String(currentGame.id) === String(gameId) ? optimisticPlacement(currentGame, session, action, pendingMove) : void 0;
+  if (pending) startPendingMove(pending);
+  const accepted = await sendGameAction(gameId, action, statusElement, renderGame, socketState);
+  if (!accepted) cancelPendingMove();
+}
+function startPendingMove(pending) {
+  pendingMove = pending;
+  showPendingStone();
+  sounds.play(MOVE_SOUNDS.stone, "stone");
+  clearTimeout(pendingMoveTimer);
+  pendingMoveTimer = setTimeout(() => {
+    if (pendingMove !== pending) return;
+    cancelPendingMove("Move not confirmed by the server.");
+  }, PENDING_MOVE_TIMEOUT_MS);
+}
+function settlePendingMove(game) {
+  if (!pendingMove || !isPendingSettled(pendingMove, game)) return false;
+  const confirmed = String(pendingMove.gameId) === String(game.id) && (game.playMoves ?? 0) > pendingMove.playMoves;
+  pendingMove = void 0;
+  clearTimeout(pendingMoveTimer);
+  return confirmed;
+}
+function cancelPendingMove(reason = statusElement.textContent ?? "") {
+  if (!pendingMove) return;
+  pendingMove = void 0;
+  clearTimeout(pendingMoveTimer);
+  if (currentGame) renderGame(currentGame);
+  if (reason) statusElement.textContent = reason;
+}
+function showPendingStone() {
+  if (!pendingMove || !currentGame || String(currentGame.id) !== String(pendingMove.gameId)) {
+    return;
+  }
+  const point = panel.querySelector(`.point[data-index="${pendingMove.index}"]`);
+  if (!point || point.dataset.color !== "0") return;
+  const color = stoneColor(currentGame, pendingMove.team);
+  point.dataset.color = String(pendingMove.team);
+  point.style.setProperty("--stone-color", color);
+  point.style.setProperty("--stone-opacity", "0.6");
+  point.classList.add("is-pending");
+  point.classList.toggle("is-light-stone", stoneTone(color) === "light");
+  for (const marked of panel.querySelectorAll(".point.is-last-move")) {
+    marked.classList.remove("is-last-move");
+  }
+  point.classList.add("is-last-move");
+  point.style.setProperty("--last-move-dot", lastMoveDotColor(color));
 }
 function navigateGameHistory(game, historyIndex, latestHistoryIndex, action) {
   const nextIndex = nextHistoryIndex(game.history ?? [], historyIndex, latestHistoryIndex, action);

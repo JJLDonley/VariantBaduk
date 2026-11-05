@@ -1,3 +1,8 @@
+import {
+  conflictingVariants,
+  VARIANT_KEYS,
+  variantConfigProblems,
+} from "../shared/variant-conflicts.ts";
 import { nearestColorName } from "../ui/color-names.ts";
 
 type SeatOption = { value: string; label: string };
@@ -222,44 +227,17 @@ export function updateVariantOptions(): void {
   });
 }
 
-const SHAPE_CARD_BLOCKED = [
-  ["pixel", "Pixel"],
-  ["nPlusOne", "N+1"],
-  ["traitor", "Traitor"],
-  ["tetris", "Tetris"],
-  ["zen", "Zen"],
-  ["colorGo", "Color Go"],
-  ["hiddenMove", "Hidden"],
-  ["phantomMove", "Phantom"],
-] as const;
-
 export function invalidVariantComboMessage(data: FormData): string {
-  if (data.has("josekiCard") && Number(data.get("boardSize")) !== 19) {
-    return "Joseki Card requires a 19×19 board.";
-  }
-  if (
-    data.has("josekiCard") &&
-    (data.has("customGobanMode") || data.has("tetris") || data.has("zen") || data.has("colorGo"))
-  ) {
-    return "Joseki Card cannot be combined with Custom board, Tetris, Zen, or Color Go.";
-  }
-  if (data.has("hiddenMove") && data.has("zen")) return "Hidden cannot be combined with Zen.";
-  if (data.has("zen") && data.has("colorGo")) return "Zen cannot be combined with Color Go.";
-  if (data.has("teamGo") && data.has("zen")) {
-    return "Team Go cannot be combined with Zen.";
-  }
-  if (data.has("shapeCards")) {
-    const blocked = SHAPE_CARD_BLOCKED.filter(([name]) => data.has(name)).map(([, label]) => label);
-    if (blocked.length) return `Katachi cannot be combined with ${blocked.join(", ")}.`;
-    if (data.get("ruleset") === "chinese" && Number(data.get("handicap") ?? 0) > 1) {
-      return "Katachi cannot be combined with free handicap placement.";
-    }
-  }
-  if (data.has("tetris") && data.has("pixel")) return "Tetris cannot be combined with Pixel.";
-  if (data.has("tetris") && data.has("nPlusOne") && Number(data.get("nPlusOneCount")) === 4) {
-    return "Tetris cannot be combined with N+1 count 4.";
-  }
-  return "";
+  return variantConfigProblems({
+    variants: {
+      ...Object.fromEntries(VARIANT_KEYS.map((key) => [key, data.has(key)])),
+      nPlusOneCount: Number(data.get("nPlusOneCount")),
+    },
+    boardSize: Number(data.get("boardSize")),
+    customGoban: data.has("customGobanMode"),
+    ruleset: String(data.get("ruleset") ?? ""),
+    handicap: Number(data.get("handicap") ?? 0),
+  })[0] ?? "";
 }
 
 function updateVariantConflicts(): void {
@@ -267,69 +245,47 @@ function updateVariantConflicts(): void {
   const josekiCard = document.querySelector<HTMLInputElement>("[name='josekiCard']");
   const customGoban = document.querySelector<HTMLInputElement>("[name='customGobanMode']");
   const tetris = document.querySelector<HTMLInputElement>("[name='tetris']");
-  const pixel = document.querySelector<HTMLInputElement>("[name='pixel']");
-  const zen = document.querySelector<HTMLInputElement>("[name='zen']");
-  const colorGo = document.querySelector<HTMLInputElement>("[name='colorGo']");
-  const teamGo = document.querySelector<HTMLInputElement>("[name='teamGo']");
-  const hiddenMove = document.querySelector<HTMLInputElement>("[name='hiddenMove']");
   const nPlusOne = document.querySelector<HTMLInputElement>("[name='nPlusOne']");
   const nPlusOneCount = document.querySelector<HTMLInputElement>("[name='nPlusOneCount']");
-  if (
-    !boardSize || !josekiCard || !customGoban || !tetris || !pixel || !zen || !colorGo ||
-    !teamGo || !hiddenMove || !nPlusOne || !nPlusOneCount
-  ) return;
-  resolveExclusivePair(tetris, pixel);
-  resolveExclusivePair(zen, colorGo);
-  resolveExclusivePair(zen, teamGo);
-  resolveExclusivePair(zen, hiddenMove);
+  if (!boardSize || !josekiCard || !customGoban || !tetris || !nPlusOne || !nPlusOneCount) return;
+  const variants = new Map(
+    VARIANT_KEYS.flatMap((key) => {
+      const input = document.querySelector<HTMLInputElement>(`[name='${key}']`);
+      return input ? [[key, input] as const] : [];
+    }),
+  );
+  // When two clashing variants are both checked, keep the one just clicked.
+  for (const [key, input] of variants) {
+    for (const other of conflictingVariants(key)) {
+      const otherInput = variants.get(other);
+      if (otherInput) resolveExclusivePair(input, otherInput);
+    }
+  }
   if (josekiCard.checked) {
     boardSize.value = "19";
     if (customGoban.checked) customGoban.checked = false;
-    if (tetris.checked) tetris.checked = false;
-    if (zen.checked) zen.checked = false;
-    if (colorGo.checked) colorGo.checked = false;
   }
   const tetrisBlockedByNPlusOne = nPlusOne.checked && Number(nPlusOneCount.value) === 4;
   if (tetrisBlockedByNPlusOne && tetris.checked) tetris.checked = false;
-  const tetrisChecked = tetris.checked;
-  setVariantDisabled(pixel, tetrisChecked);
+  // Every button's state is recomputed on each change, so unchecking a variant re-enables
+  // everything it was blocking.
+  for (const [key, input] of variants) {
+    setVariantDisabled(
+      input,
+      conflictingVariants(key).some((other) => variants.get(other)?.checked),
+    );
+  }
+  if (tetrisBlockedByNPlusOne) setVariantDisabled(tetris, true);
+  if (customGoban.checked) setVariantDisabled(josekiCard, true);
   setVariantDisabled(customGoban, josekiCard.checked);
-  setVariantDisabled(tetris, pixel.checked || tetrisBlockedByNPlusOne || josekiCard.checked);
-  setVariantDisabled(colorGo, zen.checked || josekiCard.checked);
-  setVariantDisabled(teamGo, zen.checked);
-  setVariantDisabled(hiddenMove, zen.checked);
-  setVariantDisabled(
-    zen,
-    colorGo.checked || teamGo.checked || hiddenMove.checked || josekiCard.checked,
-  );
-  setVariantDisabled(
-    josekiCard,
-    customGoban.checked || tetris.checked || zen.checked || colorGo.checked,
-  );
   boardSize.setCustomValidity(
     josekiCard.checked && Number(boardSize.value) !== 19
       ? "Joseki Card requires a 19×19 board."
       : "",
   );
   nPlusOneCount.setCustomValidity(
-    tetrisChecked && Number(nPlusOneCount.value) === 4 ? "Tetris cannot use N+1 count 4." : "",
+    tetris.checked && Number(nPlusOneCount.value) === 4 ? "Tetris cannot use N+1 count 4." : "",
   );
-  updateShapeCardConflicts();
-}
-
-function updateShapeCardConflicts(): void {
-  const shapeCards = document.querySelector<HTMLInputElement>("[name='shapeCards']");
-  if (!shapeCards) return;
-  const blocked = SHAPE_CARD_BLOCKED
-    .map(([name]) => document.querySelector<HTMLInputElement>(`[name='${name}']`))
-    .filter((input): input is HTMLInputElement => Boolean(input));
-  if (shapeCards.checked && document.activeElement === shapeCards) {
-    for (const input of blocked) input.checked = false;
-  }
-  const anyBlocked = blocked.some((input) => input.checked);
-  if (anyBlocked && shapeCards.checked) shapeCards.checked = false;
-  if (shapeCards.checked) { for (const input of blocked) setVariantDisabled(input, true); }
-  setVariantDisabled(shapeCards, anyBlocked);
 }
 
 function resolveExclusivePair(first: HTMLInputElement, second: HTMLInputElement): void {

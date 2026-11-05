@@ -1,12 +1,14 @@
 import { escapeHtml } from "../ui/format.ts";
-import { boardGridHtml, starPointsHtml } from "./board-render.ts";
-import { boardEdge, boardStep, pointLabel, pointPosition } from "./board-utils.ts";
+import { boardGridHtml, boardLandHtml, starPointsHtml } from "./board-render.ts";
+import { type BoardFrame, boardFrame, pointLabel, pointPosition } from "./board-utils.ts";
 import {
   gameInfoHtml,
+  lastMoveDotColor,
   placementPreviewTeam,
   resultText,
   scoringHelpHtml,
   stoneColor,
+  stoneTone,
 } from "./display.ts";
 import { teamSeatsHtml, usersColumnHtml } from "./seats-render.ts";
 import { territoryShadeHtml } from "./territory.ts";
@@ -53,7 +55,8 @@ export function gameViewHtml(context: GameViewContext): string {
     showCoordinates,
     historyEntry,
   } = context;
-  const edge = boardEdge(showCoordinates, game.boardWidth, game.boardHeight);
+  // One frame for everything drawn on the board: equal line spacing, outer water trimmed.
+  const frame = boardFrame(game, showCoordinates);
   const overlay = josekiPlacementOverlay(game, boardColors, boardOpacity);
   const result = resultText(game);
   const shapeCardInProgress = Boolean(game.shapeCards?.active);
@@ -74,15 +77,26 @@ export function gameViewHtml(context: GameViewContext): string {
     </dialog>
     <div class="game-view ${game.shapeCards ? "has-shape-hand" : ""}">
       <section class="board-panel" aria-label="Board">
-        <div class="board ${result ? "has-result" : ""}" data-preview-team="${
-    placementPreviewTeam(game)
-  }" data-coordinates="${showCoordinates}" style="--board-step: ${
-    boardStep(game.boardWidth, edge)
-  }%; --preview-color: ${stoneColor(game, placementPreviewTeam(game))}">
-          ${boardGridHtml(game, showCoordinates)}
-          ${starPointsHtml(game, showCoordinates)}
-          ${territoryShadeHtml(game, overlay.colors, edge)}
-          ${boardPointsHtml(game, overlay.colors, overlay.opacity, edge)}
+        <div class="board ${result ? "has-result" : ""} ${
+    game.board.includes(-1) ? "has-water" : ""
+  }" data-preview-team="${placementPreviewTeam(game)}" data-preview-tone="${
+    stoneTone(stoneColor(game, placementPreviewTeam(game)))
+  }" data-coordinates="${showCoordinates}" style="--board-step: ${frame.stepX}%; --board-aspect: ${frame.aspectRatio}; --preview-color: ${
+    stoneColor(game, placementPreviewTeam(game))
+  }">
+          ${boardLandHtml(game, frame)}
+          ${boardGridHtml(game, showCoordinates, frame)}
+          ${starPointsHtml(game, showCoordinates, frame)}
+          ${territoryShadeHtml(game, overlay.colors, frame)}
+          ${
+    boardPointsHtml(
+      game,
+      overlay.colors,
+      overlay.opacity,
+      frame,
+      lastMoveIndexes(game, viewingHistory, historyEntry),
+    )
+  }
           ${
     result ? `<div class="game-result-overlay" aria-live="polite">${escapeHtml(result)}</div>` : ""
   }
@@ -245,18 +259,37 @@ function boardPointsHtml(
   game: Game,
   boardColors: number[],
   boardOpacity: number[] | undefined,
-  edge: number,
+  frame: BoardFrame,
+  lastMove: ReadonlySet<number>,
 ): string {
   return boardColors.map((color, index) => {
-    const point = pointPosition(game, index, edge);
+    const point = pointPosition(game, index, frame);
     const opacity = boardOpacity?.[index] ?? 1;
     const renderColor = color === 99 ? 3 : color;
-    return `<button class="point ${game.deadStones?.[index] ? "is-dead" : ""} ${
-      game.noScorePoints?.[index] ? "is-no-score" : ""
-    }" aria-label="${pointLabel(game, index)}" data-index="${index}" data-color="${renderColor}" ${
+    const hex = stoneColor(game, color);
+    const isStone = color > 0 && color !== 99;
+    const classes = [
+      "point",
+      game.deadStones?.[index] ? "is-dead" : "",
+      game.noScorePoints?.[index] ? "is-no-score" : "",
+      isStone && stoneTone(hex) === "light" ? "is-light-stone" : "",
+      isStone && lastMove.has(index) ? "is-last-move" : "",
+    ].filter(Boolean).join(" ");
+    const dot = isStone && lastMove.has(index) ? `; --last-move-dot: ${lastMoveDotColor(hex)}` : "";
+    return `<button class="${classes}" aria-label="${
+      pointLabel(game, index)
+    }" data-index="${index}" data-color="${renderColor}" ${
       color === -1 ? "disabled" : ""
-    } style="left: ${point.left}%; top: ${point.top}%; --stone-color: ${
-      stoneColor(game, color)
-    }; --stone-opacity: ${opacity}"></button>`;
+    } style="left: ${point.left}%; top: ${point.top}%; --stone-color: ${hex}; --stone-opacity: ${opacity}${dot}"></button>`;
   }).join("");
+}
+
+/** Board indexes of the last move: the reviewed position's when reviewing, else the live one. */
+export function lastMoveIndexes(
+  game: Game,
+  viewingHistory: boolean,
+  historyEntry: HistoryEntry | undefined,
+): Set<number> {
+  const points = viewingHistory ? historyEntry?.lastStone : game.lastStone;
+  return new Set((points ?? []).map((point) => point.y * game.boardWidth + point.x));
 }

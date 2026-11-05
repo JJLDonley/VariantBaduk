@@ -18,8 +18,6 @@
   --board-point-outline: var(--color-danger);
   --no-score-stripe: rgb(150 35 35 / 75%);
   --preview-outline: rgb(80 80 80 / 45%);
-  --custom-goban-point-bg: rgb(0 0 0 / 12%);
-  --custom-goban-point-border: rgb(0 0 0 / 25%);
 
   --stone-black: #080808;
   --stone-white: #eeeeee;
@@ -55,8 +53,6 @@
     --board-point-outline: var(--color-danger);
     --no-score-stripe: rgb(205 70 70 / 72%);
     --preview-outline: rgb(220 220 220 / 38%);
-    --custom-goban-point-bg: rgb(0 0 0 / 18%);
-    --custom-goban-point-border: rgb(0 0 0 / 34%);
 
     --stone-black: #050505;
     --stone-white: #eeeeee;
@@ -92,8 +88,6 @@
   --board-point-outline: var(--color-danger);
   --no-score-stripe: rgb(205 70 70 / 72%);
   --preview-outline: rgb(220 220 220 / 38%);
-  --custom-goban-point-bg: rgb(0 0 0 / 18%);
-  --custom-goban-point-border: rgb(0 0 0 / 34%);
 
   --stone-black: #050505;
   --stone-white: #eeeeee;

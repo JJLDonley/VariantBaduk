@@ -53,6 +53,7 @@ export function gameConfigFromFormData(data: FormData): CreateGameConfig {
       shapeCardFull: data.has("shapeCardFull"),
       shapeCardReshuffle: data.has("shapeCardReshuffle"),
       tetris: data.has("tetris"),
+      magnetic: data.has("magnetic"),
       nPlusOne: data.has("nPlusOne"),
       nPlusOneCount: Number(data.get("nPlusOneCount")),
       traitor: data.has("traitor"),

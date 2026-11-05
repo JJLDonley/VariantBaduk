@@ -80,6 +80,7 @@ export type GameVariants = {
   shapeCardFull?: boolean;
   shapeCardReshuffle?: boolean;
   tetris?: boolean;
+  magnetic?: boolean;
   nPlusOne?: boolean;
   nPlusOneCount?: number;
   traitor?: boolean;
@@ -122,6 +123,10 @@ export type HistoryEntry = {
   phase?: "joseki" | "hidden" | "play" | "scoring" | "done" | string;
   board?: number[];
   boardOpacity?: number[];
+  /** Stones of the move that led to this position (only those the viewer can see). */
+  lastStone?: { x: number; y: number }[];
+  /** Magnetic Go: stones that move slid. */
+  magnetMoves?: Game["magnetMoves"];
 };
 
 export type UserSummary = {
@@ -162,6 +167,9 @@ export type HiddenSetup = {
 
 export type Game = {
   id: GameId;
+  /** Magnetic Go: stones the last move slid (animated client-side). */
+  magnetMoves?: { from: { x: number; y: number }; to: { x: number; y: number } }[];
+  lastStone?: { x: number; y: number }[];
   phase: "play" | "scoring" | "done" | string;
   boardWidth: number;
   boardHeight: number;
@@ -185,6 +193,18 @@ export type Game = {
   josekiSetup?: JosekiSetup;
   hiddenSetup?: HiddenSetup;
   shapeCards?: ShapeCardsView;
+};
+
+/** Socket update after the first snapshot: no config, and history only from `historyFrom`. */
+export type GameUpdate = Omit<Game, "config" | "history"> & {
+  historyFrom: number;
+  history: HistoryEntry[];
+};
+
+/** Past positions for history review, fetched on demand from `from`. */
+export type GameHistoryResponse = {
+  from: number;
+  entries: HistoryEntry[];
 };
 
 export type GameActionType =

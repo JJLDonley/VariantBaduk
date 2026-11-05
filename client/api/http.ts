@@ -2,6 +2,7 @@ import type {
   Game,
   GameAction,
   GameConfig,
+  GameHistoryResponse,
   GameId,
   GameListResponse,
   GameResponse,
@@ -78,6 +79,14 @@ export async function createGame(config: GameConfig): Promise<Response> {
 
 export async function getGame(gameId: GameId): Promise<Response> {
   return await fetch(`/api/games/${gameId}`);
+}
+
+export async function getGameHistory(gameId: GameId, from: number): Promise<Response> {
+  return await fetch(`/api/games/${gameId}/history?from=${from}`);
+}
+
+export async function readGameHistory(response: Response): Promise<GameHistoryResponse> {
+  return await jsonResponse<GameHistoryResponse>(response);
 }
 
 export async function readGame(response: Response): Promise<Game> {

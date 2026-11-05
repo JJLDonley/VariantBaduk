@@ -1,6 +1,7 @@
 import type { Game, GameId } from "../types/domain.ts";
 import { joinSeat } from "../api/http.ts";
 import { inviteRulesHtml } from "./variants.ts";
+import { confirmJoinOnPhone } from "./board-size-warning.ts";
 
 export function openJoinedRulesDialog(game: Game): void {
   const rulesHtml = inviteRulesHtml(game);
@@ -27,6 +28,11 @@ export async function maybeJoinHashSeat(
   if (!seatId) return;
   const seat = game.seats.find((candidate) => candidate.id === seatId);
   if (!seat || seat.playerUuid) return;
+  if (!(await confirmJoinOnPhone(game))) {
+    // Declined: drop the seat from the link so the question isn't asked again on every render.
+    history.replaceState(null, "", `/game/${game.id}`);
+    return;
+  }
   const response = await joinSeat(game.id, seatId);
   if (!response.ok) return;
   history.replaceState(null, "", `/game/${game.id}`);

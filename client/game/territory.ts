@@ -1,11 +1,15 @@
-import { neighborIndexes, pointPosition } from "./board-utils.ts";
+import { type BoardFrame, neighborIndexes, pointPosition } from "./board-utils.ts";
 import { stoneColor } from "./display.ts";
 import type { Game } from "../types/domain.ts";
 
-export function territoryShadeHtml(game: Game, boardColors: number[], edge?: number): string {
+export function territoryShadeHtml(
+  game: Game,
+  boardColors: number[],
+  frame?: BoardFrame,
+): string {
   if (game.phase !== "scoring" && game.phase !== "done") return "";
   return territoryShadeIndexes(game, boardColors).map(({ index, team }) => {
-    const point = pointPosition(game, index, edge);
+    const point = pointPosition(game, index, frame);
     return `<i class="territory-shade" aria-hidden="true" style="left: ${point.left}%; top: ${point.top}%; --territory-color: ${
       stoneColor(game, team)
     }"></i>`;

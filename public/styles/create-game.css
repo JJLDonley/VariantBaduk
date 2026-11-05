@@ -409,6 +409,12 @@
   margin: 0;
 }
 
+.custom-board-preset {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
 /* Unified Variant Settings block style. */
 .bonus-points-settings,
 .custom-board-settings,
