@@ -46,6 +46,7 @@ import {
   connectGameSocket as connectGameSocketToServer,
   disconnectGameSocket,
 } from "./game/realtime.ts";
+import { initReferrerLink } from "./ui/referrer-link.ts";
 import { applySavedTheme, toggleTheme, updateThemeToggle } from "./ui/theme.ts";
 import { allVariantRulesHelpHtml } from "./game/variants.ts";
 import {
@@ -197,6 +198,7 @@ countdownSound?.addEventListener("change", () => {
 document.addEventListener("click", closeSoundPopover);
 
 async function boot() {
+  initReferrerLink(document.querySelector(".header-actions"));
   try {
     const { health, session: loadedSession } = await loadBootData();
     session = loadedSession;

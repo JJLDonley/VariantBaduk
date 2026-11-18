@@ -14,6 +14,40 @@ Unknown `/api/*` paths return `404 {"error":"not_found"}`.
 
 ---
 
+## Endpoint overview
+
+| Method | Path                                         | Purpose                                   |
+| ------ | -------------------------------------------- | ----------------------------------------- |
+| GET    | `/api/health`                                | Server status                             |
+| GET    | `/api/session`                               | Current player (creates a session)        |
+| POST   | `/api/session/name`                          | Change the player's name                  |
+| GET    | `/api/games`                                 | List games                                |
+| GET    | `/api/games/events`                          | SSE stream: game list changed             |
+| POST   | `/api/games`                                 | Create a game                             |
+| GET    | `/api/games/{id}`                            | One game, as seen by the caller           |
+| GET    | `/api/games/{id}/history?from={n}`           | Board positions for history entries       |
+| POST   | `/api/games/{id}/seats/{seatId}/join`        | Sit in a seat                             |
+| POST   | `/api/games/{id}/seats/{seatId}/leave`       | Leave a seat                              |
+| POST   | `/api/games/{id}/actions`                    | Play a move or other action               |
+| GET    | `/api/games/{id}/ws`                         | WebSocket for live play                   |
+| GET    | `/api/joseki-cards`, `/api/joseki-cards/{id}`| Joseki Card data                          |
+| GET    | `/api/shape-cards`                           | Katachi shape card data                   |
+
+There is no endpoint to delete or edit a game after it is created.
+
+## Conventions
+
+- **Bodies are forgiving.** A body that is not a JSON object (bad JSON, an array, empty) is treated
+  as `{}`. Config fields that are missing, the wrong type or out of range are replaced with defaults
+  or clamped, not rejected. For example, `"komi": "auto"` or any other non-number gives the ruleset's
+  default komi. Always read the normalized `config` in the response to see what was used.
+- **Errors** are JSON: `{ "error": "<code>" }`. Codes are short `snake_case` strings, except variant
+  conflicts on `POST /api/games`, which return a readable sentence.
+- **Ids** are strings. Game ids are numeric strings (`"42"`).
+- **Names** (player names, game names) are always plain text. Render them as text, never as HTML.
+
+---
+
 ## Quick start: create a variant game and share it
 
 ```bash
@@ -114,7 +148,7 @@ On success: `201 { "game": GameView }` (see [Game view](#game-view)).
 | `boardSize`   | `9` \| `13` \| `19`                                           | `9`                | Any other value becomes `9`.                                                                                                  |
 | `customGoban` | object                                                        | —                  | Custom board shape, overrides `boardSize`. See below.                                                                         |
 | `ruleset`     | `"chinese"` \| `"aga"` \| `"japanese"` \| `"area"` \| `"territory"` | `"chinese"`        | `japanese`/`territory` use territory scoring; the rest use area scoring. `chinese` uses free handicap placement.              |
-| `komi`        | number                                                        | depends on ruleset | If omitted: 7.5 for `chinese`/`aga`, 6.5 for `japanese`, 0.5 for those three with handicap, and **0** for `area`/`territory`. Clamped to ±1000. |
+| `komi`        | number                                                        | depends on ruleset | If omitted: 7.5 for `chinese`/`aga`, 6.5 for `japanese`, 0.5 for those three with handicap, and **0** for `area`/`territory`. A value that is not a number gives 7.5 (`chinese`/`aga`), 6.5 (others) or 0.5 (with handicap). Clamped to ±1000. |
 | `handicap`    | integer 0–9                                                   | `0`                | Ignored on custom boards.                                                                                                     |
 | `time`        | object                                                        | no clock           | See below.                                                                                                                    |
 | `creatorSeat` | string                                                        | `"black"`          | Seat the creator sits in: `"black"`, `"white"`, `"player-N"`, `"team-T-N"`, or `"none"` to stay out.                          |
@@ -152,7 +186,7 @@ All flags are booleans and default to `false`. Option fields only matter when th
 | Pixel                 | `pixel`             |                                                                                                                              |
 | Magnetic              | `magnetic`          |                                                                                                                              |
 | Zen                   | `zen`               | `zenPlayerCount`: odd number 3–9 (default 3)                                                                                 |
-| Color Go              | `colorGo`           | `colorGoPlayerCount` 2–4 (default 3); `colorGoColors`: `"#rrggbb"` per player; `colorGoKomi`: number per player (±1000)              |
+| Color Go              | `colorGo`           | `colorGoPlayerCount` 2–4 (default 3); `colorGoColors`: `"#rrggbb"` per player; `colorGoKomi`: number per player (±1000; non-numbers use the default)              |
 | Team Go               | `teamGo`            | `teamGoSeatCounts`: players per team, each 0–9, at least two teams > 0 (default `[2, 2]`). With Color Go, one team per color. |
 | Phantom               | `phantomMove`       | `phantomHideViewers`                                                                                                         |
 | Hidden                | `hiddenMove`        | `hiddenMoveCount` 1–20 (default 3); `hiddenMoveShowViewers` (default `true`)                                                 |
@@ -304,6 +338,60 @@ ws.onmessage = (e) => {
 };
 ws.send(JSON.stringify({ type: "action", action: { type: "pass" } }));
 ```
+
+---
+
+## Game links (web client)
+
+These are page URLs, not API endpoints. They are what you give to players.
+
+| URL                                   | What the client does                                                 |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| `/`                                   | Lobby: game list and create form.                                    |
+| `/game/{id}`                          | Opens the game as a spectator (or as the seats this player holds).   |
+| `/game/{id}#{seatId}`                 | Opens the game and joins `seatId` if it is free. Use for invites.    |
+| `/game/{id}?from=badukclub#{seatId}`  | Same, plus a "← BadukClub" link in the header back to `https://baduk.club/vgs`. |
+
+About `from`:
+
+- Only known source names are accepted. The only one is `badukclub`. Any other value, including a
+  URL, is ignored, so `from` cannot redirect players to an arbitrary site.
+- The client removes `from` from the address bar after reading it, so links copied afterwards don't
+  carry it. It remembers the source for the rest of the browser tab (`sessionStorage`), so the link
+  stays while the player moves between the game and the lobby.
+- The link is not shown when the page is inside a frame.
+
+---
+
+## Embedding in a frame
+
+The site may be shown in an `<iframe>` only by pages on `variant.baduk.club` itself and on
+`https://baduk.club` / `https://*.baduk.club`. Every other site is blocked by the browser
+(`Content-Security-Policy: frame-ancestors 'self' https://baduk.club https://*.baduk.club`).
+
+```html
+<iframe src="https://variant.baduk.club/game/42#black" allow="autoplay"></iframe>
+```
+
+- `baduk.club` and `variant.baduk.club` are the same site, so the `SameSite=Lax` session cookie
+  works inside the frame and the player keeps their seat.
+- Browsers block sound until the player has interacted with the frame; `allow="autoplay"` helps.
+- Links inside the frame (lobby, rules) stay inside the frame.
+
+---
+
+## Limits (hosted server)
+
+The public server at `variant.baduk.club` runs behind nginx, which adds these limits per IP address:
+
+| Limit                         | Value                                                  |
+| ----------------------------- | ------------------------------------------------------ |
+| `/api/` request rate          | 5 per second, bursts up to 20; above that `503`.       |
+| Other requests                | 30 per second, bursts up to 60.                        |
+| Open connections              | 20 at once.                                            |
+| Request body                  | 1 MB.                                                  |
+| HTTP methods                  | `GET`, `HEAD`, `POST` only; others get `405`.          |
+| WebSocket actions             | 1 per 80 ms per socket (`too_many_actions`).           |
 
 ---
 

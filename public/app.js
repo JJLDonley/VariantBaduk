@@ -4651,6 +4651,46 @@ function disconnectGameSocket(socketState2) {
   socketState2.socket?.close();
 }
 
+// client/ui/referrer-link.ts
+var SOURCES = {
+  badukclub: {
+    label: "BadukClub",
+    href: "https://baduk.club/vgs"
+  }
+};
+var STORAGE_KEY = "vg_from";
+function readStored() {
+  try {
+    return sessionStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+function store(key) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, key);
+  } catch {
+  }
+}
+function initReferrerLink(container) {
+  const url = new URL(location.href);
+  const fromParam = url.searchParams.get("from");
+  if (fromParam !== null) {
+    url.searchParams.delete("from");
+    history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+    if (Object.hasOwn(SOURCES, fromParam)) store(fromParam);
+  }
+  if (window.self !== window.top) return;
+  const key = fromParam !== null && Object.hasOwn(SOURCES, fromParam) ? fromParam : readStored();
+  const source = key && Object.hasOwn(SOURCES, key) ? SOURCES[key] : null;
+  if (!source || !container) return;
+  const link = document.createElement("a");
+  link.className = "referrer-link";
+  link.href = source.href;
+  link.textContent = `\u2190 ${source.label}`;
+  container.prepend(link);
+}
+
 // client/ui/theme.ts
 var themes = [
   "system",
@@ -4758,20 +4798,20 @@ var LAST_MOVE_MARKERS = [
   "square",
   "triangle"
 ];
-var STORAGE_KEY = "baduk:last-move-marker";
+var STORAGE_KEY2 = "baduk:last-move-marker";
 function parseLastMoveMarker(value) {
   return LAST_MOVE_MARKERS.find((marker) => marker === value) ?? "slice";
 }
 function readLastMoveMarker() {
   try {
-    return parseLastMoveMarker(localStorage.getItem(STORAGE_KEY));
+    return parseLastMoveMarker(localStorage.getItem(STORAGE_KEY2));
   } catch {
     return "slice";
   }
 }
 function saveLastMoveMarker(marker) {
   try {
-    localStorage.setItem(STORAGE_KEY, marker);
+    localStorage.setItem(STORAGE_KEY2, marker);
   } catch {
   }
 }
@@ -5143,6 +5183,7 @@ countdownSound?.addEventListener("change", () => {
 });
 document.addEventListener("click", closeSoundPopover);
 async function boot() {
+  initReferrerLink(document.querySelector(".header-actions"));
   try {
     const { health, session: loadedSession } = await loadBootData();
     session = loadedSession;

@@ -26,6 +26,20 @@
   gap: 0.5rem;
 }
 
+.referrer-link {
+  color: inherit;
+  font-size: 0.9rem;
+  opacity: 0.8;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.referrer-link:hover,
+.referrer-link:focus-visible {
+  opacity: 1;
+  text-decoration: underline;
+}
+
 .header-actions button {
   align-items: center;
   block-size: 2.25rem;
