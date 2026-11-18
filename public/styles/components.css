@@ -1,0 +1,79 @@
+.ui-surface,
+.ui-card,
+.ui-panel,
+.ui-dialog {
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  color: var(--surface-text);
+}
+
+.ui-card,
+.ui-panel,
+.ui-dialog {
+  border-radius: var(--radius-md);
+}
+
+.ui-card,
+.ui-panel {
+  padding: var(--space-4);
+}
+
+.ui-panel,
+.panel-card {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ui-dialog {
+  background: var(--dialog-bg);
+  border-color: var(--dialog-border);
+  color: var(--dialog-text);
+}
+
+.ui-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.ui-cluster {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ui-scroll,
+.panel-card,
+.game-list,
+.shell.game-layout .game-view,
+.players-panel,
+.users-panel {
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.ui-scroll::-webkit-scrollbar,
+.panel-card::-webkit-scrollbar,
+.game-list::-webkit-scrollbar,
+.shell.game-layout .game-view::-webkit-scrollbar,
+.players-panel::-webkit-scrollbar,
+.users-panel::-webkit-scrollbar {
+  display: var(--scrollbar-display);
+}
+
+.ui-muted,
+.muted-text {
+  color: var(--meta-text);
+}
+
+.internal-divider {
+  background: var(--divider-color);
+  block-size: 1px;
+  inline-size: 100%;
+}
+
+.panel-divider,
+.form-divider,
+.game-list-card::after {
+  background: var(--divider-fade);
+}

@@ -1,0 +1,6 @@
+ID=knights-move
+NAME=Knight
+COUNT=3
+STONES=
+B[aa];
+B[bc];
