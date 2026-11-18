@@ -48,7 +48,11 @@ import {
 } from "./game/realtime.ts";
 import { applySavedTheme, toggleTheme, updateThemeToggle } from "./ui/theme.ts";
 import { allVariantRulesHelpHtml } from "./game/variants.ts";
-import { keepGridLinesCrisp } from "./game/board-render.ts";
+import {
+  keepBoardOnDevicePixels,
+  keepGridLinesCrisp,
+  snapBoardToDevicePixels,
+} from "./game/board-render.ts";
 import { animateMagnetSlides, magnetSlides, reviewMagnetSlides } from "./game/magnet-animation.ts";
 import {
   applyLastMoveMarker,
@@ -128,6 +132,7 @@ const PENDING_MOVE_TIMEOUT_MS = 3000;
 
 applySavedTheme();
 keepGridLinesCrisp();
+keepBoardOnDevicePixels(() => panel.querySelector<HTMLElement>(".board"));
 updateThemeToggle(themeToggle);
 updateCoordinateToggle();
 updateStoneShadowToggle();
@@ -410,6 +415,7 @@ function renderGame(game: Game) {
   });
   // Big boards are expensive to rebuild; keep the points and patch what changed when possible.
   if (!patchPanelKeepingBoard(panel, panelHtml)) panel.innerHTML = panelHtml;
+  snapBoardToDevicePixels(panel.querySelector<HTMLElement>(".board"));
 
   historyKeyController = bindGameEvents({
     panel,

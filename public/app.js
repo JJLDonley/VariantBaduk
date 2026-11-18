@@ -861,6 +861,25 @@ function keepGridLinesCrisp(root = document.documentElement) {
   };
   update();
 }
+function snapBoardToDevicePixels(board) {
+  if (!board) return;
+  board.style.translate = "";
+  const rect = board.getBoundingClientRect();
+  const ratio = devicePixelRatio > 0 ? devicePixelRatio : 1;
+  const nudge = (value) => (Math.round(value * ratio) - value * ratio) / ratio;
+  const dx = nudge(rect.left);
+  const dy = nudge(rect.top);
+  if (Math.abs(dx) > 1e-3 || Math.abs(dy) > 1e-3) {
+    board.style.translate = `${svgNumber(dx)}px ${svgNumber(dy)}px`;
+  }
+}
+function keepBoardOnDevicePixels(getBoard) {
+  let frame = 0;
+  addEventListener("resize", () => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => snapBoardToDevicePixels(getBoard()));
+  });
+}
 function svgNumber(value) {
   return Number(value.toFixed(4));
 }
@@ -5069,6 +5088,7 @@ var pendingMoveTimer;
 var PENDING_MOVE_TIMEOUT_MS = 3e3;
 applySavedTheme();
 keepGridLinesCrisp();
+keepBoardOnDevicePixels(() => panel.querySelector(".board"));
 updateThemeToggle(themeToggle);
 updateCoordinateToggle();
 updateStoneShadowToggle();
@@ -5308,6 +5328,7 @@ function renderGame(game) {
     showCoordinates
   });
   if (!patchPanelKeepingBoard(panel, panelHtml)) panel.innerHTML = panelHtml;
+  snapBoardToDevicePixels(panel.querySelector(".board"));
   historyKeyController = bindGameEvents({
     panel,
     game,
