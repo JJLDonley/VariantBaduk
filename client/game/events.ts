@@ -102,6 +102,8 @@ function bindCustomGobanPreview({ panel, game, statusElement }: BindGameEventsOp
   }
 }
 
+const boardListeners = new WeakMap<HTMLElement, AbortController>();
+
 function bindBoard(options: BindGameEventsOptions): void {
   const { panel, game, session, boardColors, viewingHistory, sendAction, showCoordinates } =
     options;
@@ -123,13 +125,19 @@ function bindBoard(options: BindGameEventsOptions): void {
     clearShapeStamp(board);
     lastStampPoint = undefined;
   };
-  board?.addEventListener("contextmenu", (event) => event.preventDefault());
+  // The board element survives re-renders (board-patch.ts), so drop the previous render's
+  // listeners: they close over that render's game state.
+  if (board) boardListeners.get(board)?.abort();
+  const listeners = new AbortController();
+  if (board) boardListeners.set(board, listeners);
+  const { signal } = listeners;
+  board?.addEventListener("contextmenu", (event) => event.preventDefault(), { signal });
   board?.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     activePointerId = event.pointerId;
     board.setPointerCapture(event.pointerId);
     showPreview(event);
-  });
+  }, { signal });
   board?.addEventListener("pointermove", (event) => {
     if (game.phase === "joseki" && game.josekiSetup?.phase === "place") {
       const nextCorner = josekiCornerFromEvent(board, event);
@@ -157,14 +165,14 @@ function bindBoard(options: BindGameEventsOptions): void {
     }
     event.preventDefault();
     showPreview(event);
-  });
+  }, { signal });
   board?.addEventListener("pointerleave", () => {
     if (activePointerId === undefined) clearPreview();
-  });
+  }, { signal });
   board?.addEventListener("pointercancel", () => {
     activePointerId = undefined;
     clearPreview();
-  });
+  }, { signal });
   board?.addEventListener("pointerup", async (event) => {
     if (activePointerId !== event.pointerId) return;
     event.preventDefault();
@@ -210,7 +218,7 @@ function bindBoard(options: BindGameEventsOptions): void {
         withCurrentSeat(game, session, { type: "place", x: point.x, y: point.y }),
       );
     }
-  });
+  }, { signal });
 }
 
 function isJosekiCorner(

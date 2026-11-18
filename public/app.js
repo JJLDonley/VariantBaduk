@@ -1,3 +1,101 @@
+// client/game/board-patch.ts
+function patchPanelKeepingBoard(panel2, html) {
+  const oldBoard = panel2.querySelector(".board");
+  if (!oldBoard) return false;
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  const fresh = template.content;
+  const newBoard = fresh.querySelector(".board");
+  if (!newBoard) return false;
+  const oldPoints = boardPoints(oldBoard);
+  const newPoints = boardPoints(newBoard);
+  if (oldPoints.length === 0 || oldPoints.length !== newPoints.length) return false;
+  const oldChain = ancestorsUpTo(oldBoard, panel2);
+  const newChain = ancestorsUpTo(newBoard, fresh);
+  if (!oldChain || !newChain || oldChain.length !== newChain.length) return false;
+  for (let level = 0; level < oldChain.length; level++) {
+    if (oldChain[level].tagName !== newChain[level].tagName) return false;
+  }
+  let oldParent = panel2;
+  let newParent = fresh;
+  for (let level = oldChain.length - 1; level >= 0; level--) {
+    const oldKeep = oldChain[level];
+    const newKeep = newChain[level];
+    replaceSiblings(oldParent, oldKeep, newParent, newKeep);
+    syncAttributes(oldKeep, newKeep);
+    oldParent = oldKeep;
+    newParent = newKeep;
+  }
+  replaceSiblings(oldParent, oldBoard, newParent, newBoard);
+  syncBoard(oldBoard, newBoard, oldPoints, newPoints);
+  return true;
+}
+function boardPoints(board) {
+  return [
+    ...board.children
+  ].filter((child) => child.classList.contains("point"));
+}
+function ancestorsUpTo(element, root) {
+  const chain = [];
+  let current = element.parentElement;
+  while (current && current !== root) {
+    chain.push(current);
+    current = current.parentElement;
+  }
+  const top = chain.at(-1) ?? element;
+  return top.parentNode === root ? chain : void 0;
+}
+function replaceSiblings(oldParent, oldKeep, newParent, newKeep) {
+  for (const child of [
+    ...oldParent.childNodes
+  ]) if (child !== oldKeep) child.remove();
+  const before = [];
+  const after = [];
+  let seenKeep = false;
+  for (const child of [
+    ...newParent.childNodes
+  ]) {
+    if (child === newKeep) seenKeep = true;
+    else (seenKeep ? after : before).push(child);
+  }
+  oldKeep.before(...before);
+  oldKeep.after(...after);
+}
+function syncBoard(oldBoard, newBoard, oldPoints, newPoints) {
+  syncAttributes(oldBoard, newBoard);
+  for (const child of [
+    ...oldBoard.childNodes
+  ]) {
+    if (!(child instanceof HTMLElement && child.classList.contains("point"))) child.remove();
+  }
+  const before = [];
+  const after = [];
+  let seenPoint = false;
+  for (const child of [
+    ...newBoard.childNodes
+  ]) {
+    if (child instanceof HTMLElement && child.classList.contains("point")) seenPoint = true;
+    else (seenPoint ? after : before).push(child);
+  }
+  oldPoints[0].before(...before);
+  oldPoints[oldPoints.length - 1].after(...after);
+  for (let index = 0; index < oldPoints.length; index++) {
+    syncAttributes(oldPoints[index], newPoints[index]);
+    if (oldPoints[index].childNodes.length || newPoints[index].childNodes.length) {
+      oldPoints[index].replaceChildren(...newPoints[index].childNodes);
+    }
+  }
+}
+function syncAttributes(target, source) {
+  for (const name of target.getAttributeNames()) {
+    if (!source.hasAttribute(name)) target.removeAttribute(name);
+  }
+  for (const name of source.getAttributeNames()) {
+    const value = source.getAttribute(name);
+    if (target.getAttribute(name) !== value) target.setAttribute(name, value);
+  }
+}
+
 // client/api/http.ts
 async function jsonResponse(response) {
   return await response.json();
@@ -3571,6 +3669,7 @@ function bindCustomGobanPreview({ panel: panel2, game, statusElement: statusElem
     });
   }
 }
+var boardListeners = /* @__PURE__ */ new WeakMap();
 function bindBoard(options) {
   const { panel: panel2, game, session: session2, boardColors, viewingHistory, sendAction: sendAction2, showCoordinates: showCoordinates2 } = options;
   const board = panel2.querySelector(".board");
@@ -3590,12 +3689,20 @@ function bindBoard(options) {
     clearShapeStamp(board);
     lastStampPoint = void 0;
   };
-  board?.addEventListener("contextmenu", (event) => event.preventDefault());
+  if (board) boardListeners.get(board)?.abort();
+  const listeners = new AbortController();
+  if (board) boardListeners.set(board, listeners);
+  const { signal } = listeners;
+  board?.addEventListener("contextmenu", (event) => event.preventDefault(), {
+    signal
+  });
   board?.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     activePointerId = event.pointerId;
     board.setPointerCapture(event.pointerId);
     showPreview(event);
+  }, {
+    signal
   });
   board?.addEventListener("pointermove", (event) => {
     if (game.phase === "joseki" && game.josekiSetup?.phase === "place") {
@@ -3624,13 +3731,19 @@ function bindBoard(options) {
     }
     event.preventDefault();
     showPreview(event);
+  }, {
+    signal
   });
   board?.addEventListener("pointerleave", () => {
     if (activePointerId === void 0) clearPreview();
+  }, {
+    signal
   });
   board?.addEventListener("pointercancel", () => {
     activePointerId = void 0;
     clearPreview();
+  }, {
+    signal
   });
   board?.addEventListener("pointerup", async (event) => {
     if (activePointerId !== event.pointerId) return;
@@ -3672,6 +3785,8 @@ function bindBoard(options) {
         y: point.y
       }));
     }
+  }, {
+    signal
   });
 }
 function isJosekiCorner(value) {
@@ -5175,7 +5290,7 @@ function renderGame(game) {
     deadStones: [],
     noScorePoints: []
   } : game;
-  panel.innerHTML = gameViewHtml({
+  const panelHtml = gameViewHtml({
     game: displayGame,
     session,
     historyEntry: viewingHistory ? rawHistory[historyIndex] : void 0,
@@ -5192,6 +5307,7 @@ function renderGame(game) {
     canResign,
     showCoordinates
   });
+  if (!patchPanelKeepingBoard(panel, panelHtml)) panel.innerHTML = panelHtml;
   historyKeyController = bindGameEvents({
     panel,
     game,

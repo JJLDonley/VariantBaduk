@@ -1,3 +1,4 @@
+import { patchPanelKeepingBoard } from "./game/board-patch.ts";
 import {
   createGame,
   getGame,
@@ -390,7 +391,7 @@ function renderGame(game: Game) {
   const displayGame = viewingHistory
     ? { ...game, phase: "play", deadStones: [], noScorePoints: [] }
     : game;
-  panel.innerHTML = gameViewHtml({
+  const panelHtml = gameViewHtml({
     game: displayGame,
     session,
     historyEntry: viewingHistory ? rawHistory[historyIndex] : undefined,
@@ -407,6 +408,8 @@ function renderGame(game: Game) {
     canResign,
     showCoordinates,
   });
+  // Big boards are expensive to rebuild; keep the points and patch what changed when possible.
+  if (!patchPanelKeepingBoard(panel, panelHtml)) panel.innerHTML = panelHtml;
 
   historyKeyController = bindGameEvents({
     panel,

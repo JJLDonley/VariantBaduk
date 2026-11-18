@@ -121,7 +121,9 @@
 }
 
 .point::before {
-  border-radius: inherit;
+  /* Same as .point's radius. Not `inherit`: on big boards (2,700 points) that made each full
+     board render spend ~0.5 s in style recalculation. */
+  border-radius: 999px;
   content: "";
   display: block;
   inset: -35%;
@@ -248,17 +250,12 @@
   background: color-mix(in srgb, var(--preview-color, var(--stone-neutral)) 55%, transparent);
 }
 
-.board.has-result .board-grid,
-.board.has-result .board-land,
-.board.has-result .coord,
-.board.has-result .star-point,
-.board.has-result .territory-shade,
-.board.has-result .point {
-  filter: blur(2px);
-}
-
 .game-result-overlay {
   align-items: center;
+  /* One blur of the whole board behind the result. Blurring each layer and point separately
+     (a filter on up to 2,700 elements) made finished big boards slow to paint. */
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
   background: color-mix(in srgb, var(--surface-bg) 52%, transparent);
   color: var(--surface-text);
   display: flex;
