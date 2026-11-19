@@ -23,6 +23,24 @@
     content: "VGS";
     font-size: 1.35rem;
   }
+
+  /* Back link becomes an arrow-only button, sized like the header buttons. */
+  .referrer-link {
+    background: var(--button-bg);
+    block-size: 2rem;
+    border: 1px solid var(--button-border);
+    border-radius: var(--radius-sm);
+    color: var(--button-text);
+    font-size: 1rem;
+    font-weight: 650;
+    justify-content: center;
+    min-inline-size: 2rem;
+    opacity: 1;
+  }
+
+  .referrer-label {
+    display: none;
+  }
 }
 
 @media (max-width: 759px) {

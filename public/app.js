@@ -4687,7 +4687,16 @@ function initReferrerLink(container) {
   const link = document.createElement("a");
   link.className = "referrer-link";
   link.href = source.href;
-  link.textContent = `\u2190 ${source.label}`;
+  link.setAttribute("aria-label", `Back to ${source.label}`);
+  link.title = `Back to ${source.label}`;
+  const arrow = document.createElement("span");
+  arrow.setAttribute("aria-hidden", "true");
+  arrow.textContent = "\u2190";
+  const label = document.createElement("span");
+  label.className = "referrer-label";
+  label.setAttribute("aria-hidden", "true");
+  label.textContent = source.label;
+  link.append(arrow, label);
   container.prepend(link);
 }
 
