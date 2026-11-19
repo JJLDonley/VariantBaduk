@@ -351,6 +351,17 @@ These are page URLs, not API endpoints. They are what you give to players.
 | `/game/{id}`                          | Opens the game as a spectator (or as the seats this player holds).   |
 | `/game/{id}#{seatId}`                 | Opens the game and joins `seatId` if it is free. Use for invites.    |
 | `/game/{id}?from=badukclub#{seatId}`  | Same, plus a "← BadukClub" link in the header back to `https://baduk.club/vgs`. |
+| `/game/{id}?name={name}#{seatId}`     | Same, and first sets the player's name to `{name}`.                  |
+
+Parameters can be combined: `/game/42?name=Alex&from=badukclub#black`.
+
+About `name`:
+
+- The client sets it with `POST /api/session/name` before the game loads, so the seat shows the
+  name from the start. It replaces the player's current name, including one they typed earlier.
+- The usual name rules apply: trimmed, cut to 16 characters, profanity-filtered, shown as text.
+- The client removes `name` from the address bar after reading it, so shared links don't carry it.
+  Each player's own link needs its own `name`.
 
 About `from`:
 

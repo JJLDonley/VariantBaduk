@@ -4691,6 +4691,18 @@ function initReferrerLink(container) {
   container.prepend(link);
 }
 
+// client/ui/link-name.ts
+var MAX_NAME_LENGTH = 16;
+function takeLinkName() {
+  const url = new URL(location.href);
+  const raw = url.searchParams.get("name");
+  if (raw === null) return null;
+  url.searchParams.delete("name");
+  history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+  const name = raw.trim().slice(0, MAX_NAME_LENGTH);
+  return name || null;
+}
+
 // client/ui/theme.ts
 var themes = [
   "system",
@@ -5187,6 +5199,11 @@ async function boot() {
   try {
     const { health, session: loadedSession } = await loadBootData();
     session = loadedSession;
+    const linkName = takeLinkName();
+    if (linkName && linkName !== session.name) {
+      const response = await updateSessionName(linkName);
+      if (response.ok) session = await readSession(response);
+    }
     nameInput.value = session.name ?? "";
     lastSavedName = nameInput.value;
     statusElement.textContent = `${health.service} online \xB7 ${session.name ?? ""}`;

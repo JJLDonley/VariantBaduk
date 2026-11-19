@@ -47,6 +47,7 @@ import {
   disconnectGameSocket,
 } from "./game/realtime.ts";
 import { initReferrerLink } from "./ui/referrer-link.ts";
+import { takeLinkName } from "./ui/link-name.ts";
 import { applySavedTheme, toggleTheme, updateThemeToggle } from "./ui/theme.ts";
 import { allVariantRulesHelpHtml } from "./game/variants.ts";
 import {
@@ -202,6 +203,12 @@ async function boot() {
   try {
     const { health, session: loadedSession } = await loadBootData();
     session = loadedSession;
+    const linkName = takeLinkName();
+    if (linkName && linkName !== session.name) {
+      // Set before the game (and its #seat) loads, so the seat shows this name from the start.
+      const response = await updateSessionName(linkName);
+      if (response.ok) session = await readSession(response);
+    }
     nameInput.value = session.name ?? "";
     lastSavedName = nameInput.value;
     statusElement.textContent = `${health.service} online · ${session.name ?? ""}`;
